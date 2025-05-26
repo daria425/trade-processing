@@ -2,6 +2,7 @@ from typing import Literal, List
 import asyncio
 from asyncio import Task
 from app.core.notifications import NotificationService
+from app.core.websocket_manager import WebsocketManager
 import time
 import random
 import uuid
@@ -137,7 +138,7 @@ class TradeSystem:
             self.processors = []
         print("All trade processors shut down successfully")
 
-    async def run(self, trader_id: str, ticker: str, quantity: int, ws_manager, notification_service: NotificationService):
+    async def run(self, trader_id: str, ticker: str, quantity: int, ws_manager: WebsocketManager, notification_service: NotificationService):
         try:
             trader = Trader(trader_id=trader_id)
             stock = Stock(ticker=ticker)

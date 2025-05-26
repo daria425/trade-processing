@@ -35,7 +35,7 @@ class NotificationService:
                     self.send_push_notification(token, message)
     
     def send_push_notification(self,token, message):
-        print(f"Notification sent to {token}: {message["message"]}")
+        print(f"Notification sent to {token}: {message['message']}")
 
 
 
