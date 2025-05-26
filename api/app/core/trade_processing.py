@@ -108,7 +108,7 @@ class TradeSystem:
                     }
                     await ws_manager.broadcast(message)
                 trade.complete()
-                await notification_service.send_notification(trader_id)
+                await notification_service.send_notification(trader_id, ws_manager)
                 self.trade_orders.task_done()
             except asyncio.TimeoutError:
                 continue

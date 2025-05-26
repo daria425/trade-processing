@@ -23,12 +23,12 @@ class NotificationService:
         trader=next((record for record in FAKE_DB if record["trader_id"] == trader_id), None)
         return trader
 
-    def send_notification(self, trader_id, ws_manager):
+    async def send_notification(self, trader_id, ws_manager):
         trader=self._get_trader(trader_id)
         message={"message":"Trade completed!"}
         if trader:
             if trader['status']=="online":
-                ws_manager.notify(message)
+                await ws_manager.notify(trader_id, message)
             else:
                 # send mock phone notification
                 for token in trader["notification_tokens"]:
