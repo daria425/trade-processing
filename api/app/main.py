@@ -11,7 +11,7 @@ from app.models.trade_request import TradeRequest
 from app.core.trade_processing import TradeSystem
 import asyncio
 
-FAKE_DB = {
+API_KEY_STORE = {
     "api-key-123": "trader_001",
     "api-key-456": "trader_002",
 }
@@ -19,28 +19,28 @@ FAKE_DB = {
 
 class WebsocketManager:
     def __init__(self):
-        self.clients = set()
+        self.clients = {}
         self.lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, trader_id:str):
         await websocket.accept()
         async with self.lock:
-            self.clients.add(websocket)
+            self.clients[trader_id]=websocket
 
-    async def disconnect(self, websocket: WebSocket):
+    async def disconnect(self,trader_id:str):
         async with self.lock:
-            self.clients.discard(websocket)
+            self.clients.pop(trader_id, None)
+
+    async def notify(self, trader_id, message):
+        async with self.lock:
+            ws=self.clients.get(trader_id)
+            await ws.send_json(message)
 
     async def broadcast(self, message):
         async with self.lock:
-            disconnected_clients = set()
-            for client in self.clients:
-                try:
-                    await client.send_json(message)
-                except Exception:
-                    disconnected_clients.add(client)
-            for client in disconnected_clients:
-                self.clients.discard(client)
+            for ws in self.clients.values():
+                await ws.send_json(message)
+
 
 
 app = FastAPI()
@@ -51,9 +51,9 @@ async def authenticate(request, call_next):
     api_key = request.headers.get("api-key")
     if not api_key:
         raise HTTPException(status_code=401, detail="API Key must be provided")
-    if api_key not in FAKE_DB:
+    if api_key not in API_KEY_STORE:
         raise HTTPException(status_code=403, detail="Invalid API Key")
-    request.state.trader_id = FAKE_DB[api_key]
+    request.state.trader_id = API_KEY_STORE[api_key]
     response = await call_next(request)
     return response
 
@@ -101,12 +101,20 @@ async def make_trade_order(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+async def websocket_auth(websocket: WebSocket):
+    api_key=websocket.headers.get("api-key")
+    if not api_key:
+        await websocket.close()
+        return
+    trader_id=API_KEY_STORE[api_key]
+    return trader_id
 
 @app.websocket("/trade-progress/ws")
 async def ws_endpoint(websocket: WebSocket):
-    await ws_manager_instance.connect(websocket)
+    trader_id=await websocket_auth(websocket)
+    await ws_manager_instance.connect(websocket, trader_id)
     try:
         while True:
             await asyncio.sleep(60)  # Keeps the connection alive
     except WebSocketDisconnect:
-        await ws_manager_instance.disconnect(websocket)
+        await ws_manager_instance.disconnect(websocket, trader_id)
