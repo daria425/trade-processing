@@ -8,10 +8,12 @@ from fastapi import (
     Depends
 )
 from fastapi.middleware.cors import CORSMiddleware
-from app.models.trade_request import TradeRequest
+from app.schemas.trade_request import TradeRequest
 from app.core.trade_processing import TradeSystem
 from app.core.notifications import NotificationService
 from app.core.websocket_manager import WebsocketManager
+from app.models.tables import Trader, Notification
+from app.db.database_connection import engine, Base
 import asyncio
 
 API_KEY_STORE = {
@@ -20,10 +22,17 @@ API_KEY_STORE = {
 }
 
 
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        print("Database initialized")
 
 
+async def lifespan(app:FastAPI):
+    await init_db()
+    yield
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 
 @app.middleware("http")
