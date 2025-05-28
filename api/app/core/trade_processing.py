@@ -3,6 +3,9 @@ import asyncio
 from asyncio import Task
 from app.core.notifications import NotificationService
 from app.core.websocket_manager import WebsocketManager
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.notification_store import create_notification
+from app.db.trader_store import get_trader_by_id
 import time
 import random
 import uuid
@@ -75,7 +78,8 @@ class Trader:
 
 
 class TradeSystem:
-    def __init__(self, num_processors: int = 5):
+    def __init__(self, sessionmaker, num_processors: int = 5):
+        self.sessionmaker=sessionmaker
         self.trade_orders = asyncio.Queue()
         self.progress_queue = asyncio.Queue()
         self.num_processors = num_processors
@@ -86,36 +90,39 @@ class TradeSystem:
         await self.trade_orders.put(trade_order)
 
     async def process_trade(self, processor_id, ws_manager, trader_id, notification_service):
-        while not self.shutdown_flag:
-            try:
-                trade = await self.trade_orders.get()
-                trade.start()
-                interval = 0.5
-                while trade.get_progress() < 1.0:
-                    await asyncio.sleep(interval)
-                    progress = trade.get_progress() * 100
-                    print(
-                        f"[Processor: {processor_id}]Processing trade:{trade.id} for {trade.quantity} shares of {trade.stock.ticker}, Progress:{progress}"
-                    )
-                    message = {
-                        "event": "trade_progress",
-                        "trade_id": trade.id,
-                        "trader_id": trader_id,
-                        "ticker": trade.stock.ticker,
-                        "quantity": trade.quantity,
-                        "progress": round(progress, 2),
-                        "status": trade.status,
-                    }
-                    await ws_manager.broadcast(message)
-                trade.complete()
-                await notification_service.send_notification(trader_id, ws_manager)
-                self.trade_orders.task_done()
-            except asyncio.TimeoutError:
-                continue
-            except Exception as e:
-                print(f"Error in processor {processor_id}: {e}")
-                if trade:
+        async with self.sessionmaker() as session:
+            while not self.shutdown_flag:
+                try:
+                    trade = await self.trade_orders.get()
+                    trade.start()
+                    interval = 0.5
+                    while trade.get_progress() < 1.0:
+                        await asyncio.sleep(interval)
+                        progress = trade.get_progress() * 100
+                        print(
+                            f"[Processor: {processor_id}]Processing trade:{trade.id} for {trade.quantity} shares of {trade.stock.ticker}, Progress:{progress}"
+                        )
+                        message = {
+                            "event": "trade_progress",
+                            "trade_id": trade.id,
+                            "trader_id": trader_id,
+                            "ticker": trade.stock.ticker,
+                            "quantity": trade.quantity,
+                            "progress": round(progress, 2),
+                            "status": trade.status,
+                        }
+                        await ws_manager.broadcast(message)
+                    trade.complete()
+                    trader=await get_trader_by_id(trader_id)
+                    message=await notification_service.send_notification(trader, ws_manager)
+                    await create_notification(message=message['message'], trader_id=trader.id, session=session)
                     self.trade_orders.task_done()
+                except asyncio.TimeoutError:
+                    continue
+                except Exception as e:
+                    print(f"Error in processor {processor_id}: {e}")
+                    if trade:
+                        self.trade_orders.task_done()
 
     async def start_processors(self, ws_manager, trader_id, notification_service):
         for i in range(self.num_processors):
@@ -138,12 +145,12 @@ class TradeSystem:
             self.processors = []
         print("All trade processors shut down successfully")
 
-    async def run(self, trader_id: str, ticker: str, quantity: int, ws_manager: WebsocketManager, notification_service: NotificationService):
+    async def run(self, trader_id: str, ticker: str, quantity: int, ws_manager: WebsocketManager, notification_service: NotificationService, db: AsyncSession):
         try:
             trader = Trader(trader_id=trader_id)
             stock = Stock(ticker=ticker)
             trade = trader.make_trade_order(stock, quantity)
-            await self.start_processors(ws_manager=ws_manager, trader_id=trader_id, notification_service=notification_service)
+            await self.start_processors(ws_manager=ws_manager, trader_id=trader_id, notification_service=notification_service, db=db)
             await self.add_trade_order(trade)
             await self.process_all_orders()
         except Exception as e:

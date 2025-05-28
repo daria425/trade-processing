@@ -13,7 +13,7 @@ from app.core.trade_processing import TradeSystem
 from app.core.notifications import NotificationService
 from app.core.websocket_manager import WebsocketManager
 from app.models.tables import Trader, Notification
-from app.db.database_connection import engine, Base
+from app.db.database_connection import engine, Base, AsyncSessionLocal
 import asyncio
 
 API_KEY_STORE = {
@@ -70,11 +70,12 @@ ws_manager_instance = WebsocketManager()
 async def make_trade_order(
     request: Request, trade_request: TradeRequest, bg_tasks: BackgroundTasks, notification_service=Depends(NotificationService)
 ):
+    # update to include session
     try:
         trader_id = request.state.trader_id
         ticker = trade_request.ticker
         quantity = trade_request.quantity
-        trade_system = TradeSystem()
+        trade_system = TradeSystem(sessionmaker=AsyncSessionLocal)
         bg_tasks.add_task(
             trade_system.run,
             trader_id=trader_id,
