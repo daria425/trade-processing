@@ -1,1 +1,3 @@
 .vscode
+
+alembic/versions/__pycache__/
