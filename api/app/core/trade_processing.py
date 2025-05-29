@@ -113,7 +113,7 @@ class TradeSystem:
                         }
                         await ws_manager.broadcast(message)
                     trade.complete()
-                    trader=await get_trader_by_id(trader_id)
+                    trader=await get_trader_by_id(trader_id, session)
                     message=await notification_service.send_notification(trader, ws_manager)
                     await create_notification(message=message['message'], trader_id=trader.id, session=session)
                     self.trade_orders.task_done()
@@ -145,12 +145,12 @@ class TradeSystem:
             self.processors = []
         print("All trade processors shut down successfully")
 
-    async def run(self, trader_id: str, ticker: str, quantity: int, ws_manager: WebsocketManager, notification_service: NotificationService, db: AsyncSession):
+    async def run(self, trader_id: str, ticker: str, quantity: int, ws_manager: WebsocketManager, notification_service: NotificationService):
         try:
             trader = Trader(trader_id=trader_id)
             stock = Stock(ticker=ticker)
             trade = trader.make_trade_order(stock, quantity)
-            await self.start_processors(ws_manager=ws_manager, trader_id=trader_id, notification_service=notification_service, db=db)
+            await self.start_processors(ws_manager=ws_manager, trader_id=trader_id, notification_service=notification_service)
             await self.add_trade_order(trade)
             await self.process_all_orders()
         except Exception as e:

@@ -7,6 +7,7 @@ from fastapi import (
     WebSocketDisconnect,
     Depends
 )
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas.trade_request import TradeRequest
 from app.core.trade_processing import TradeSystem
@@ -37,14 +38,15 @@ app = FastAPI(lifespan=lifespan)
 
 @app.middleware("http")
 async def authenticate(request, call_next):
-    api_key = request.headers.get("api-key")
+    api_key = request.headers.get("api_key")
     if not api_key:
         raise HTTPException(status_code=401, detail="API Key must be provided")
     if api_key not in API_KEY_STORE:
         raise HTTPException(status_code=403, detail="Invalid API Key")
-    request.state.trader_id = API_KEY_STORE[api_key]
-    response = await call_next(request)
-    return response
+    else:
+        request.state.trader_id = API_KEY_STORE[api_key]
+        response = await call_next(request)
+        return response
 
 
 origins = ["http://localhost:5173"]
@@ -93,12 +95,17 @@ async def make_trade_order(
         raise HTTPException(status_code=500, detail=str(e))
 
 async def websocket_auth(websocket: WebSocket):
-    api_key=websocket.headers.get("api-key")
+    api_key=websocket.headers.get("api_key")
     if not api_key:
         await websocket.close()
-        return
-    trader_id=API_KEY_STORE[api_key]
-    return trader_id
+        raise HTTPException(status_code=401, detail="API Key must be provided")
+    if api_key not in API_KEY_STORE:
+        await websocket.close()
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+        
+    else:
+        trader_id=API_KEY_STORE[api_key]
+        return trader_id
 
 @app.websocket("/trade-progress/ws")
 async def ws_endpoint(websocket: WebSocket):
