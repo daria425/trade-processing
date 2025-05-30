@@ -81,7 +81,6 @@ class TradeSystem:
     def __init__(self, sessionmaker, num_processors: int = 5):
         self.sessionmaker=sessionmaker
         self.trade_orders = asyncio.Queue()
-        self.progress_queue = asyncio.Queue()
         self.num_processors = num_processors
         self.processors: List[Task] = []
         self.shutdown_flag = False
@@ -114,8 +113,7 @@ class TradeSystem:
                         await ws_manager.broadcast(message)
                     trade.complete()
                     trader=await get_trader_by_id(trader_id, session)
-                    message=await notification_service.send_notification(trader, ws_manager)
-                    await create_notification(message=message['message'], trader_id=trader.id, session=session)
+                    message=await notification_service.send_notification(trader, ws_manager, session)
                     self.trade_orders.task_done()
                 except asyncio.TimeoutError:
                     continue
