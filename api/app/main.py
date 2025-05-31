@@ -8,6 +8,8 @@ from fastapi import (
     Depends
 )
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.utils.auth_utils import get_token_data
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas.trade_request import TradeRequest
 from app.core.trade_processing import TradeSystem
@@ -16,12 +18,6 @@ from app.core.websocket_manager import WebsocketManager
 from app.models.tables import Trader, Notification
 from app.db.database_connection import engine, Base, AsyncSessionLocal
 import asyncio
-
-API_KEY_STORE = {
-    "api-key-123": "trader_001",
-    "api-key-456": "trader_002",
-}
-
 
 async def init_db():
     async with engine.begin() as conn:
@@ -37,16 +33,21 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.middleware("http")
-async def authenticate(request, call_next):
-    api_key = request.headers.get("api_key")
-    if not api_key:
-        raise HTTPException(status_code=401, detail="API Key must be provided")
-    if api_key not in API_KEY_STORE:
-        raise HTTPException(status_code=403, detail="Invalid API Key")
-    else:
-        request.state.trader_id = API_KEY_STORE[api_key]
+async def authenticate(request:Request, call_next):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+            raise HTTPException(status_code=401, detail="Authorization header missing")
+    token = auth_header.split('Bearer ')[-1]
+    try:
+        user_data = get_token_data(token)
+        
+        # Store user in request state for access in route handlers
+        request.state.user = user_data
         response = await call_next(request)
         return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 
 origins = ["http://localhost:5173"]
@@ -95,17 +96,19 @@ async def make_trade_order(
         raise HTTPException(status_code=500, detail=str(e))
 
 async def websocket_auth(websocket: WebSocket):
-    api_key=websocket.headers.get("api_key")
-    if not api_key:
-        await websocket.close()
-        raise HTTPException(status_code=401, detail="API Key must be provided")
-    if api_key not in API_KEY_STORE:
-        await websocket.close()
-        raise HTTPException(status_code=403, detail="Invalid API Key")
-        
-    else:
-        trader_id=API_KEY_STORE[api_key]
-        return trader_id
+    auth_header = websocket.headers.get("Authorization")
+    if not auth_header:
+        await websocket.close(code=1008) 
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+    
+    token = auth_header.split('Bearer ')[-1]
+    user_data = get_token_data(token)
+    
+    if not user_data:
+        await websocket.close(code=1008)
+        raise HTTPException(status_code=401, detail="Invalid authentication")
+    
+    return user_data["uid"]
 
 @app.websocket("/trade-progress/ws")
 async def ws_endpoint(websocket: WebSocket):
