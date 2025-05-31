@@ -28,7 +28,7 @@ from app.db.database_connection import (
     init_async_session,
 )
 from app.db.trader_store import signup_trader, login_trader
-from app.core.market_data import send_price_data
+from app.core.market_data import MarketDataStreamer
 from dotenv import load_dotenv
 import asyncio
 import os
@@ -188,17 +188,20 @@ async def make_trade_order(
 
 
 @app.get("/api/market-data/")
+# will run on useeffect from client side
 async def get_market_data(
     request: Request,
-    ticker: str,
+    
     bg_tasks: BackgroundTasks,
+    streamer=Depends(MarketDataStreamer),
     use_test_auth: bool = Query(False),
+    ticker: List[str] = Query(..., description="List of stock tickers"),
 ):
     trader_id = request.state.user["uid"] if not use_test_auth else TEST_TRADER_ID
     bg_tasks.add_task(
-        send_price_data,
+        streamer.stream_price_data,
         trader_id=trader_id,
-        ticker=ticker,
+        tickers=ticker,
         ws_manager=market_data_ws_manager,
     )
     return {
@@ -242,6 +245,10 @@ async def market_data_ws_endpoint(websocket: WebSocket):
     await market_data_ws_manager.connect(websocket, trader_id)
     try:
         while True:
-            await asyncio.sleep(60)  # Keeps the connection alive
+            try:
+                await asyncio.sleep(60)  # Keeps the connection alive
+            except asyncio.CancelledError:
+                logger.info(f"WebSocket connection for trader {trader_id} closed.")
+                break
     except WebSocketDisconnect:
         await market_data_ws_manager.disconnect(websocket, trader_id)
