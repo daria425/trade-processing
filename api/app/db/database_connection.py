@@ -10,3 +10,9 @@ AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_
 
 Base = declarative_base()
 
+async def init_async_session():
+    session=AsyncSessionLocal()
+    try: 
+        yield session
+    finally:
+        await session.close()

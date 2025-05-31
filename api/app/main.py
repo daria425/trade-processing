@@ -12,11 +12,13 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.utils.auth_utils import get_token_data
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas.trade_request import TradeRequest
+from app.schemas.signup_request import SignupRequest
 from app.core.trade_processing import TradeSystem
 from app.core.notifications import NotificationService
 from app.core.websocket_manager import WebsocketManager
 from app.models.tables import Trader, Notification
-from app.db.database_connection import engine, Base, AsyncSessionLocal
+from app.db.database_connection import engine, Base, AsyncSessionLocal, init_async_session
+from app.db.trader_store import signup_trader, login_trader
 import asyncio
 
 async def init_db():
@@ -68,14 +70,40 @@ def main():
 
 ws_manager_instance = WebsocketManager()
 
+@app.post("/api/trader/signup")
+async def signup_trader_endpoint(
+    request: Request, 
+sign_up_request: SignupRequest,
+    session= Depends(init_async_session)
+):
+    try:
+        user_data = request.state.user
+        uid = user_data["uid"]
+        email = user_data.get("email")
+        name = sign_up_request.name
+        new_trader = await signup_trader(uid=uid, email=email, name=name, session=session)
+        return JSONResponse(status_code=201, content={"message": "Trader signed up successfully", "trader": new_trader})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/api/trader/login")
+async def login_trader_endpoint(request: Request, session=Depends(init_async_session) ):
+    try:
+        user_data = request.state.user
+        uid = user_data["uid"]
+        trader = await login_trader(uid=uid, session=session)
+        return JSONResponse(status_code=200, content={"message": "Trader logged in successfully", "trader": trader})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/trades/send")
+
+
+@app.post("/api/trades/send")
 async def make_trade_order(
     request: Request, trade_request: TradeRequest, bg_tasks: BackgroundTasks, notification_service=Depends(NotificationService)
 ):
-    # update to include session
     try:
-        trader_id = request.state.trader_id
+        trader_id = request.state.user['uid'] 
         ticker = trade_request.ticker
         quantity = trade_request.quantity
         trade_system = TradeSystem(sessionmaker=AsyncSessionLocal)
