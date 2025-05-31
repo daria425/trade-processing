@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { SignUpForm } from "./Auth";
+import { Auth } from "./components/auth/Auth";
 function App() {
-  return <SignUpForm />;
+  return <Auth />;
 }
 
 export default App;
