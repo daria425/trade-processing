@@ -18,6 +18,7 @@ class WebsocketManager:
     async def notify(self, trader_id, message):
         async with self.lock:
             ws=self.clients.get(trader_id)
+            print(f"Sending message to trader {trader_id}: {message}")
             await ws.send_json(message)
 
     async def broadcast(self, message):

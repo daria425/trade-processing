@@ -1,13 +1,16 @@
 from fastapi import (
     FastAPI,
+    Query,
     HTTPException,
     Request,
     BackgroundTasks,
     WebSocket,
     WebSocketDisconnect,
-    Depends
+    Depends,
 )
+
 from fastapi.responses import JSONResponse
+from typing import List
 from app.utils.auth_utils import get_token_data
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas.trade_request import TradeRequest
@@ -18,9 +21,21 @@ from app.core.websocket_manager import WebsocketManager
 from app.models.tables import Trader, Notification
 from app.config.firebase_config import FirebaseConfig
 from app.utils.logger import logger
-from app.db.database_connection import engine, Base, AsyncSessionLocal, init_async_session
+from app.db.database_connection import (
+    engine,
+    Base,
+    AsyncSessionLocal,
+    init_async_session,
+)
 from app.db.trader_store import signup_trader, login_trader
+from app.core.market_data import send_price_data
+from dotenv import load_dotenv
 import asyncio
+import os
+
+load_dotenv()
+TEST_TRADER_ID = os.getenv("TEST_UID")
+
 
 async def init_db():
     async with engine.begin() as conn:
@@ -28,31 +43,37 @@ async def init_db():
         print("Database initialized")
 
 
-async def lifespan(app:FastAPI):
-    firebase_instance=FirebaseConfig.get_instance()
+async def lifespan(app: FastAPI):
+    firebase_instance = FirebaseConfig.get_instance()
     firebase_instance.initialize_firebase_app()
     await init_db()
     yield
+
 
 app = FastAPI(lifespan=lifespan)
 
 
 @app.middleware("http")
-async def authenticate(request:Request, call_next):
+async def authenticate(request: Request, call_next):
+    public_paths = ["/", "/api/market-data/"]  # Root path
+
+    # Check if the current path should skip authentication
+    path = request.url.path
+    if path in public_paths:
+        return await call_next(request)
     auth_header = request.headers.get("Authorization")
     if not auth_header:
-            raise HTTPException(status_code=401, detail="Authorization header missing")
-    token = auth_header.split('Bearer ')[-1]
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+    token = auth_header.split("Bearer ")[-1]
     try:
         user_data = get_token_data(token)
-        
+
         # Store user in request state for access in route handlers
         request.state.user = user_data
         response = await call_next(request)
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 origins = ["http://localhost:5173"]
@@ -72,63 +93,80 @@ def main():
 
 
 ws_manager_instance = WebsocketManager()
+market_data_ws_manager = WebsocketManager()
+
 
 @app.post("/api/trader/signup")
 async def signup_trader_endpoint(
-    request: Request, 
-sign_up_request: SignupRequest,
-    session= Depends(init_async_session)
+    request: Request,
+    sign_up_request: SignupRequest,
+    session=Depends(init_async_session),
 ):
     try:
         user_data = request.state.user
         uid = user_data["uid"]
         email = user_data.get("email")
         name = sign_up_request.name
-        new_trader = await signup_trader(uid=uid, email=email, name=name, session=session)
-        trader_dict={
-             "id": new_trader.id,
+        new_trader = await signup_trader(
+            uid=uid, email=email, name=name, session=session
+        )
+        trader_dict = {
+            "id": new_trader.id,
             "trader_id": uid,
             "email": new_trader.email,
             "name": new_trader.name,
             "status": new_trader.status,
             "created_at": new_trader.created_at.isoformat(),
             "updated_at": new_trader.updated_at.isoformat(),
-            "last_seen_at": new_trader.last_seen_at.isoformat() if new_trader.last_seen_at else None
+            "last_seen_at": (
+                new_trader.last_seen_at.isoformat() if new_trader.last_seen_at else None
+            ),
         }
-        return JSONResponse(status_code=201, content={"message": "Trader signed up successfully", "trader": trader_dict})
+        return JSONResponse(
+            status_code=201,
+            content={"message": "Trader signed up successfully", "trader": trader_dict},
+        )
     except Exception as e:
-        logger.error(f"Error during trader signup: {str(e)}")   
+        logger.error(f"Error during trader signup: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @app.post("/api/trader/login")
-async def login_trader_endpoint(request: Request, session=Depends(init_async_session) ):
+async def login_trader_endpoint(request: Request, session=Depends(init_async_session)):
     try:
         user_data = request.state.user
         uid = user_data["uid"]
         trader = await login_trader(uid=uid, session=session)
-        trader_dict={
-             "id": trader.id,
+        trader_dict = {
+            "id": trader.id,
             "trader_id": uid,
             "email": trader.email,
             "name": trader.name,
             "status": trader.status,
             "created_at": trader.created_at.isoformat(),
             "updated_at": trader.updated_at.isoformat(),
-            "last_seen_at": trader.last_seen_at.isoformat() if trader.last_seen_at else None
+            "last_seen_at": (
+                trader.last_seen_at.isoformat() if trader.last_seen_at else None
+            ),
         }
-        return JSONResponse(status_code=200, content={"message": "Trader logged in successfully", "trader": trader_dict})
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Trader logged in successfully", "trader": trader_dict},
+        )
     except Exception as e:
-        logger.error(f"Error during trader login: {str(e)}")    
+        logger.error(f"Error during trader login: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @app.post("/api/trades/send")
 async def make_trade_order(
-    request: Request, trade_request: TradeRequest, bg_tasks: BackgroundTasks, notification_service=Depends(NotificationService)
+    request: Request,
+    trade_request: TradeRequest,
+    bg_tasks: BackgroundTasks,
+    notification_service=Depends(NotificationService),
 ):
     try:
-        trader_id = request.state.user['uid'] 
+        trader_id = request.state.user["uid"]
         ticker = trade_request.ticker
         quantity = trade_request.quantity
         trade_system = TradeSystem(sessionmaker=AsyncSessionLocal)
@@ -138,7 +176,7 @@ async def make_trade_order(
             ticker=ticker,
             quantity=quantity,
             ws_manager=ws_manager_instance,
-            notification_service=notification_service
+            notification_service=notification_service,
         )
         return {
             "status": "success",
@@ -148,27 +186,62 @@ async def make_trade_order(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def websocket_auth(websocket: WebSocket):
+
+@app.get("/api/market-data/")
+async def get_market_data(
+    request: Request,
+    ticker: str,
+    bg_tasks: BackgroundTasks,
+    use_test_auth: bool = Query(False),
+):
+    trader_id = request.state.user["uid"] if not use_test_auth else TEST_TRADER_ID
+    bg_tasks.add_task(
+        send_price_data,
+        trader_id=trader_id,
+        ticker=ticker,
+        ws_manager=market_data_ws_manager,
+    )
+    return {
+        "status": "success",
+        "message": f"Market data for {ticker} is being sent to the websocket.",
+    }
+
+
+async def websocket_auth(websocket: WebSocket, use_test_auth: bool = False):
+    if use_test_auth:
+        return TEST_TRADER_ID
     auth_header = websocket.headers.get("Authorization")
     if not auth_header:
-        await websocket.close(code=1008) 
+        await websocket.close(code=1008)
         raise HTTPException(status_code=401, detail="Authorization header missing")
-    
-    token = auth_header.split('Bearer ')[-1]
+
+    token = auth_header.split("Bearer ")[-1]
     user_data = get_token_data(token)
-    
+
     if not user_data:
         await websocket.close(code=1008)
         raise HTTPException(status_code=401, detail="Invalid authentication")
-    
+
     return user_data["uid"]
+
 
 @app.websocket("/trade-progress/ws")
 async def ws_endpoint(websocket: WebSocket):
-    trader_id=await websocket_auth(websocket)
+    trader_id = await websocket_auth(websocket)
     await ws_manager_instance.connect(websocket, trader_id)
     try:
         while True:
             await asyncio.sleep(60)  # Keeps the connection alive
     except WebSocketDisconnect:
         await ws_manager_instance.disconnect(websocket, trader_id)
+
+
+@app.websocket("/market-data/ws")
+async def market_data_ws_endpoint(websocket: WebSocket):
+    trader_id = await websocket_auth(websocket, use_test_auth=True)
+    await market_data_ws_manager.connect(websocket, trader_id)
+    try:
+        while True:
+            await asyncio.sleep(60)  # Keeps the connection alive
+    except WebSocketDisconnect:
+        await market_data_ws_manager.disconnect(websocket, trader_id)
