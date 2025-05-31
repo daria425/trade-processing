@@ -7,7 +7,7 @@ interface Trader {
   updated_at: string;
 }
 export interface UserData {
-  user: Trader;
+  trader: Trader;
 }
 
 type AuthError = {

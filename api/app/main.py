@@ -95,7 +95,7 @@ sign_up_request: SignupRequest,
             "updated_at": new_trader.updated_at.isoformat(),
             "last_seen_at": new_trader.last_seen_at.isoformat() if new_trader.last_seen_at else None
         }
-        return JSONResponse(status_code=201, content={"message": "Trader signed up successfully", "trader": new_trader})
+        return JSONResponse(status_code=201, content={"message": "Trader signed up successfully", "trader": trader_dict})
     except Exception as e:
         logger.error(f"Error during trader signup: {str(e)}")   
         raise HTTPException(status_code=500, detail=str(e))

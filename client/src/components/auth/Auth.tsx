@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { apiConfig } from "../../config/api.config";
+import { useNavigate } from "react-router";
 import loginBackground from "../../assets/login-bg.jpg";
 
 const signUpFormSchema = z.object({
@@ -41,6 +41,7 @@ const loginFormSchema = z.object({
 
 function SignUpForm({
   signup,
+  handleAuthSuccess,
 }: {
   signup: (
     email: string,
@@ -48,6 +49,7 @@ function SignUpForm({
     username: string,
     password: string
   ) => Promise<void>;
+  handleAuthSuccess: () => void;
 }) {
   const form = useForm<z.infer<typeof signUpFormSchema>>({
     resolver: zodResolver(signUpFormSchema),
@@ -68,7 +70,7 @@ function SignUpForm({
         email,
       });
       await signup(email, username, password);
-      // redirect or navigate after signup
+      handleAuthSuccess();
     } catch (error) {
       console.error("Error during signup:", error);
     }
@@ -124,8 +126,10 @@ function SignUpForm({
 }
 
 function LoginForm({
+  handleAuthSuccess,
   login,
 }: {
+  handleAuthSuccess: () => void;
   login: (email: string, password: string) => Promise<void>;
 }) {
   const form = useForm<z.infer<typeof loginFormSchema>>({
@@ -140,6 +144,7 @@ function LoginForm({
     const { email, password } = values;
     await login(email, password);
     // redirect or navigate after login
+    handleAuthSuccess();
   }
 
   return (
@@ -182,6 +187,10 @@ function LoginForm({
 export function Auth() {
   const [isLogin, setIsLogin] = useState(false);
   const { login, signup } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const handleAuthSuccess = () => {
+    navigate("/app");
+  };
   return (
     <div className="flex h-screen w-full">
       <div className="hidden md:block w-1/2 h-full">
@@ -214,9 +223,12 @@ export function Auth() {
 
           <div className="bg-white p-8 rounded-lg shadow-md">
             {isLogin ? (
-              <LoginForm login={login} />
+              <LoginForm login={login} handleAuthSuccess={handleAuthSuccess} />
             ) : (
-              <SignUpForm signup={signup} />
+              <SignUpForm
+                signup={signup}
+                handleAuthSuccess={handleAuthSuccess}
+              />
             )}
           </div>
         </div>
