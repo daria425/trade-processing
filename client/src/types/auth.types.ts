@@ -19,6 +19,7 @@ export interface AuthContextType {
   error: AuthError | null;
   setError: (error: AuthError | null) => void;
   login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   getIdToken: () => Promise<string>;
 }

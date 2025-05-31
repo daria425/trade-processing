@@ -4,6 +4,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  createUserWithEmailAndPassword,
 } from "firebase/auth";
 import type { User as FirebaseUser } from "firebase/auth";
 import { auth } from "../config/firebase.config";
@@ -16,6 +17,7 @@ const defaultContextValue: AuthContextType = {
   error: null,
   setError: () => {},
   login: async () => {},
+  signup: async () => {},
   logout: async () => {},
   getIdToken: async () => {
     throw new Error("Auth context not initialized");
@@ -34,7 +36,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     const idToken = await user.getIdToken(true);
     try {
       const response = await apiConfig.post(
-        "/api/login",
+        "/api/trader/login",
         {},
         {
           headers: {
@@ -57,17 +59,18 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
+      if (currentUser && !userData) {
+        // Only call handleTokenAuth if we don't already have user data
         await handleTokenAuth(currentUser);
-      } else {
+      } else if (!currentUser) {
+        setUserData(null);
         setIsLoading(false);
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [userData]);
 
   const login = async (email: string, password: string) => {
-    //TO-DO: add option to enter name
     try {
       const userCredential = await signInWithEmailAndPassword(
         auth,
@@ -78,6 +81,54 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err: any) {
       setError({ message: err.message });
       console.error("Error logging in:", err);
+    }
+  };
+
+  const signup = async (email: string, username: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // 1. Create user in Firebase Authentication
+      console.log("Signing up with:", {
+        email,
+        username,
+        password,
+      });
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      // 2. Get the ID token
+      const idToken = await userCredential.user.getIdToken(true);
+
+      // 3. Register user in your backend
+      const response = await apiConfig.post(
+        "/api/trader/signup",
+        { name: username }, // Pass name to backend
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+
+      if (response.status === 201) {
+        // Successfully registered
+        setUserData(response.data);
+      } else {
+        console.error("Error registering user:", response);
+        setError({ message: "Failed to register user" });
+        // Optionally delete the Firebase user if backend registration fails
+        await userCredential.user.delete();
+      }
+    } catch (err: any) {
+      setError({ message: err.message });
+      setUserData(null);
+      console.error("Error signing up:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -99,6 +150,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     error,
     setError,
     login,
+    signup,
     logout,
     getIdToken,
   };

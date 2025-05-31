@@ -15,3 +15,6 @@ class Logger:
     def get_logger():
         # Return the root logger when no name is provided
         return logging.getLogger()
+
+Logger.configure_logging()
+logger= Logger.get_logger()

@@ -1,4 +1,4 @@
-from uuid import uuid
+
 from datetime import datetime, timezone
 from app.models.tables import Notification
 class NotificationService:

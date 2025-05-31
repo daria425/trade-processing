@@ -3,7 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useContext } from "react";
+import { AuthContext } from "../../contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -38,7 +39,16 @@ const loginFormSchema = z.object({
   }),
 });
 
-function SignUpForm() {
+function SignUpForm({
+  signup,
+}: {
+  signup: (
+    email: string,
+
+    username: string,
+    password: string
+  ) => Promise<void>;
+}) {
   const form = useForm<z.infer<typeof signUpFormSchema>>({
     resolver: zodResolver(signUpFormSchema),
     defaultValues: {
@@ -49,12 +59,25 @@ function SignUpForm() {
   });
 
   // 2. Define a submit handler.
-  async function onSubmit(values: z.infer<typeof signUpFormSchema>) {}
+  async function onSignup(values: z.infer<typeof signUpFormSchema>) {
+    const { username, password, email } = values;
+    try {
+      console.log("Signing up with:", {
+        username,
+        password,
+        email,
+      });
+      await signup(email, username, password);
+      // redirect or navigate after signup
+    } catch (error) {
+      console.error("Error during signup:", error);
+    }
+  }
 
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onSignup)}
         className="space-y-8 max-w-md"
       >
         <FormField
@@ -100,7 +123,11 @@ function SignUpForm() {
   );
 }
 
-function LoginForm() {
+function LoginForm({
+  login,
+}: {
+  login: (email: string, password: string) => Promise<void>;
+}) {
   const form = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
@@ -109,14 +136,16 @@ function LoginForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof loginFormSchema>) {
-    console.log(values);
+  async function onLogin(values: z.infer<typeof loginFormSchema>) {
+    const { email, password } = values;
+    await login(email, password);
+    // redirect or navigate after login
   }
 
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onLogin)}
         className="space-y-8 max-w-md"
       >
         <FormField
@@ -152,6 +181,7 @@ function LoginForm() {
 
 export function Auth() {
   const [isLogin, setIsLogin] = useState(false);
+  const { login, signup } = useContext(AuthContext);
   return (
     <div className="flex h-screen w-full">
       <div className="hidden md:block w-1/2 h-full">
@@ -183,7 +213,11 @@ export function Auth() {
           </div>
 
           <div className="bg-white p-8 rounded-lg shadow-md">
-            {isLogin ? <LoginForm /> : <SignUpForm />}
+            {isLogin ? (
+              <LoginForm login={login} />
+            ) : (
+              <SignUpForm signup={signup} />
+            )}
           </div>
         </div>
       </div>

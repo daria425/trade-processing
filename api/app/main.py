@@ -8,7 +8,6 @@ from fastapi import (
     Depends
 )
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.utils.auth_utils import get_token_data
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas.trade_request import TradeRequest
@@ -17,6 +16,8 @@ from app.core.trade_processing import TradeSystem
 from app.core.notifications import NotificationService
 from app.core.websocket_manager import WebsocketManager
 from app.models.tables import Trader, Notification
+from app.config.firebase_config import FirebaseConfig
+from app.utils.logger import logger
 from app.db.database_connection import engine, Base, AsyncSessionLocal, init_async_session
 from app.db.trader_store import signup_trader, login_trader
 import asyncio
@@ -28,6 +29,8 @@ async def init_db():
 
 
 async def lifespan(app:FastAPI):
+    firebase_instance=FirebaseConfig.get_instance()
+    firebase_instance.initialize_firebase_app()
     await init_db()
     yield
 
@@ -82,8 +85,19 @@ sign_up_request: SignupRequest,
         email = user_data.get("email")
         name = sign_up_request.name
         new_trader = await signup_trader(uid=uid, email=email, name=name, session=session)
+        trader_dict={
+             "id": new_trader.id,
+            "trader_id": uid,
+            "email": new_trader.email,
+            "name": new_trader.name,
+            "status": new_trader.status,
+            "created_at": new_trader.created_at.isoformat(),
+            "updated_at": new_trader.updated_at.isoformat(),
+            "last_seen_at": new_trader.last_seen_at.isoformat() if new_trader.last_seen_at else None
+        }
         return JSONResponse(status_code=201, content={"message": "Trader signed up successfully", "trader": new_trader})
     except Exception as e:
+        logger.error(f"Error during trader signup: {str(e)}")   
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.post("/api/trader/login")
@@ -92,8 +106,19 @@ async def login_trader_endpoint(request: Request, session=Depends(init_async_ses
         user_data = request.state.user
         uid = user_data["uid"]
         trader = await login_trader(uid=uid, session=session)
-        return JSONResponse(status_code=200, content={"message": "Trader logged in successfully", "trader": trader})
+        trader_dict={
+             "id": trader.id,
+            "trader_id": uid,
+            "email": trader.email,
+            "name": trader.name,
+            "status": trader.status,
+            "created_at": trader.created_at.isoformat(),
+            "updated_at": trader.updated_at.isoformat(),
+            "last_seen_at": trader.last_seen_at.isoformat() if trader.last_seen_at else None
+        }
+        return JSONResponse(status_code=200, content={"message": "Trader logged in successfully", "trader": trader_dict})
     except Exception as e:
+        logger.error(f"Error during trader login: {str(e)}")    
         raise HTTPException(status_code=500, detail=str(e))
 
 
