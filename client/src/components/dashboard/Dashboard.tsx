@@ -1,7 +1,8 @@
 import { useOutletContext } from "react-router";
 import type { AuthContextType } from "../../types/auth.types";
+import DataStream from "./DataStream";
 export default function Dashboard() {
-  const { userData } = useOutletContext<AuthContextType>();
+  const { userData, getIdToken } = useOutletContext<AuthContextType>();
 
   return (
     <div className="bg-slate-900 min-h-screen text-white p-8">
@@ -14,6 +15,7 @@ export default function Dashboard() {
           <p className="text-indigo-300 mt-2">
             Your trading dashboard is ready
           </p>
+          <DataStream getIdToken={getIdToken} />
         </div>
       </div>
     </div>

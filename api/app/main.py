@@ -55,7 +55,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.middleware("http")
 async def authenticate(request: Request, call_next):
-    public_paths = ["/", "/api/market-data/"]  # Root path
+    public_paths = ["/"]  # Root path
 
     # Check if the current path should skip authentication
     path = request.url.path
@@ -191,7 +191,6 @@ async def make_trade_order(
 # will run on useeffect from client side
 async def get_market_data(
     request: Request,
-    
     bg_tasks: BackgroundTasks,
     streamer=Depends(MarketDataStreamer),
     use_test_auth: bool = Query(False),
@@ -210,15 +209,9 @@ async def get_market_data(
     }
 
 
-async def websocket_auth(websocket: WebSocket, use_test_auth: bool = False):
+async def websocket_auth(websocket:WebSocket, token:str, use_test_auth:bool = False):   
     if use_test_auth:
         return TEST_TRADER_ID
-    auth_header = websocket.headers.get("Authorization")
-    if not auth_header:
-        await websocket.close(code=1008)
-        raise HTTPException(status_code=401, detail="Authorization header missing")
-
-    token = auth_header.split("Bearer ")[-1]
     user_data = get_token_data(token)
 
     if not user_data:
@@ -229,8 +222,8 @@ async def websocket_auth(websocket: WebSocket, use_test_auth: bool = False):
 
 
 @app.websocket("/trade-progress/ws")
-async def ws_endpoint(websocket: WebSocket):
-    trader_id = await websocket_auth(websocket)
+async def ws_endpoint(websocket: WebSocket, token: str=Query(..., description="Bearer token for authentication")):
+    trader_id = await websocket_auth(websocket, token)
     await ws_manager_instance.connect(websocket, trader_id)
     try:
         while True:
@@ -240,8 +233,8 @@ async def ws_endpoint(websocket: WebSocket):
 
 
 @app.websocket("/market-data/ws")
-async def market_data_ws_endpoint(websocket: WebSocket):
-    trader_id = await websocket_auth(websocket, use_test_auth=True)
+async def market_data_ws_endpoint(websocket: WebSocket, token: str = Query(..., description="Bearer token for authentication")):
+    trader_id = await websocket_auth(websocket, token)
     await market_data_ws_manager.connect(websocket, trader_id)
     try:
         while True:
