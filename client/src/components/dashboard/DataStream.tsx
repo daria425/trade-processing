@@ -1,8 +1,7 @@
 import { marketDataWebsocketUrl } from "@/config/api.config";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { useEffect, useState } from "react";
-import { apiConfig } from "@/config/api.config";
-
+import { useMarketDataStream } from "../../hooks/useMarketDataStream";
 const MOCK_DATA = [
   {
     "ticker": "AAPL",
@@ -54,27 +53,12 @@ export default function DataStream({
     : null;
 
   const { status, message } = useWebSocket(websocketWithToken);
-  useEffect(() => {
-    if (status.connected) {
-      // Build the query string for multiple tickers
-      const queryParams = TICKERS.map((t) => `ticker=${t}`).join("&");
-      const url = `/api/market-data/?${queryParams}`;
-
-      apiConfig
-        .get(url, { headers: { Authorization: `Bearer ${token}` } })
-        .then((response) => {
-          console.log("📊 Initial data:", response.data);
-        })
-        .catch((error) => {
-          console.error("Error fetching initial data:", error);
-        });
-    }
-  }, [status.connected, token]); // Only run when WebSocket connects
-
-  useEffect(() => {
-    if (message) {
-      console.log("📡 Live data:", message);
-    }
-  }, [message]);
+  const { initialMessage, marketData } = useMarketDataStream(
+    status,
+    message,
+    token || "",
+    TICKERS
+  );
+  console.log(initialMessage, marketData);
   return null;
 }
