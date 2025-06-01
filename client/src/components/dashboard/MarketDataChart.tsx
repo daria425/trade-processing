@@ -50,7 +50,7 @@ export default function MarketDataChart({
     "oklch(58.5% 0.233 277.117)",
     "oklch(87% 0.065 274.039)",
   ];
-  const tickers = Array.from(allTickers);
+  const tickers = Array.from(allTickers).slice(0, 5);
   const getColorForTicker = (tickerIndex: number): string => {
     return tickerColors[tickerIndex % tickerColors.length];
   };

@@ -5,7 +5,7 @@ import type {
   InitialResponse,
   MarketDataPoint,
 } from "../types/websocket.types";
-
+import { AxiosError } from "axios";
 function useMarketDataStream(
   websocketStatus: WebSocketStatus,
   marketDataMessage: Array<MarketDataPoint> | null,
@@ -17,6 +17,7 @@ function useMarketDataStream(
     message: "",
   });
   const [marketData, setMarketData] = useState<Array<MarketDataPoint[]>>([]);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (websocketStatus.connected && token) {
       // Build the query string for multiple tickers
@@ -28,8 +29,11 @@ function useMarketDataStream(
         .then((response) => {
           setInitialMessage(response.data);
         })
-        .catch((error) => {
+        .catch((error: AxiosError<{ message?: string }>) => {
           console.error("Error fetching initial data:", error);
+          setError(
+            error.response?.data?.message || "Failed to fetch market data"
+          );
         });
     }
   }, [websocketStatus.connected, token, tickers]); // Only run when WebSocket connects
@@ -42,7 +46,7 @@ function useMarketDataStream(
       ]);
     }
   }, [marketDataMessage]);
-  return { initialMessage, marketData };
+  return { initialMessage, marketData, error };
 }
 
 export { useMarketDataStream };
