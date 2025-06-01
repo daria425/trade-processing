@@ -7,3 +7,9 @@ export interface InitialResponse {
   status: string;
   message: string;
 }
+
+export interface MarketDataPoint {
+  ticker: string;
+  price: number;
+  date: string;
+}

@@ -4,7 +4,7 @@ from app.utils.logger import logger
 import asyncio
 from typing import Set, Tuple
 import pandas as pd
-
+from app.utils.date_utils import create_timestamp
 class MarketDataStreamer:
     def __init__(self):
         self.active_streams: Set[Tuple[str, Tuple[str, ...]]] = set()
@@ -26,7 +26,7 @@ class MarketDataStreamer:
             
             # Get the last row of data
             latest_row = data.iloc[-1]
-            timestamp = data.index[-1]
+            timestamp = create_timestamp 
             
             # Handle values whether they're single values or Series objects
             def safe_float(value):
@@ -37,7 +37,7 @@ class MarketDataStreamer:
             result = {
                 "ticker": ticker,
                 "price": safe_float(latest_row["Close"]),
-                "date": timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                "date": timestamp
             }
             
             return result
@@ -65,7 +65,7 @@ class MarketDataStreamer:
                 return {ticker: {"ticker": ticker, "price": None, "date": None, "error": "No data found"} for ticker in tickers}
             
             # Get the last timestamp
-            timestamp = data.index[-1]
+            timestamp = create_timestamp()
             
             # Create result dictionary
             results = {}
@@ -79,7 +79,7 @@ class MarketDataStreamer:
                 results[ticker] = {
                     "ticker": ticker,
                     "price": float(latest_row["Close", ticker].iloc[-1]) if isinstance(latest_row["Close", ticker], pd.Series) else float(latest_row["Close", ticker]),
-                    "date": timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                    "date": timestamp
                 }
             else:
                 # Multiple tickers - data is organized with MultiIndex columns
@@ -91,14 +91,14 @@ class MarketDataStreamer:
                         results[ticker] = {
                             "ticker": ticker,
                             "price": price,
-                            "date": timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                            "date": timestamp
                         }
                     except Exception as e:
                         # Handle case where a particular ticker might be missing
                         results[ticker] = {
                             "ticker": ticker,
                             "price": None,
-                            "date": timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                            "date": timestamp,
                             "error": f"Error processing ticker data: {str(e)}"
                         }
             

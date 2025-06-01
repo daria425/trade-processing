@@ -3,12 +3,9 @@ import { apiConfig } from "../config/api.config";
 import type {
   WebSocketStatus,
   InitialResponse,
+  MarketDataPoint,
 } from "../types/websocket.types";
-interface MarketDataPoint {
-  ticker: string;
-  price: number;
-  date: string;
-}
+
 function useMarketDataStream(
   websocketStatus: WebSocketStatus,
   marketDataMessage: Array<MarketDataPoint> | null,
@@ -39,7 +36,6 @@ function useMarketDataStream(
 
   useEffect(() => {
     if (marketDataMessage && marketDataMessage.length > 0) {
-      console.log("📡 Live data:", marketDataMessage);
       setMarketData((prevData) => [
         ...prevData,
         marketDataMessage as MarketDataPoint[],
