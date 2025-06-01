@@ -21,8 +21,10 @@ export default function ProtectedRoute() {
       }
     }
   }, [nav, userData, error, isLoading]);
-  if (isLoading) {
-    return null;
-  }
-  return <Outlet context={{ userData, getIdToken }} />;
+
+  return (
+    <div className="bg-slate-950 min-h-screen">
+      {isLoading ? null : <Outlet context={{ userData, getIdToken }} />}
+    </div>
+  );
 }

@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 type ProcessedDataPoint = {
@@ -19,12 +18,17 @@ export default function MarketDataChart({
   chartData: Array<MarketDataPoint[]>;
 }) {
   const processedData: ProcessedDataPoint[] = [];
-  chartData.forEach((batch, batchIndex) => {
+  chartData.forEach((batch) => {
     // Get the timestamp from the first item in the batch
-    const timestamp = batch[0]?.date || `Batch ${batchIndex}`;
+    const timestamp = batch[0].date;
+    const formattedTimestamp = new Date(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
 
     // Create a new data point for this timestamp
-    const dataPoint: ProcessedDataPoint = { timestamp };
+    const dataPoint: ProcessedDataPoint = { timestamp: formattedTimestamp };
 
     // Add price for each ticker in this batch
     batch.forEach((item) => {
@@ -41,34 +45,39 @@ export default function MarketDataChart({
       allTickers.add(item.ticker);
     });
   });
-  const tickerColors: Record<string, string> = {
-    AAPL: "#ff6b6b",
-    GOOGL: "#48dbfb",
-    AMZN: "#feca57",
-    MSFT: "#1dd1a1",
-    TSLA: "#ff9ff3",
-  };
+  const tickerColors = [
+    "oklch(78.5% 0.115 274.713)",
+    "oklch(58.5% 0.233 277.117)",
+    "oklch(87% 0.065 274.039)",
+  ];
   const tickers = Array.from(allTickers);
+  const getColorForTicker = (tickerIndex: number): string => {
+    return tickerColors[tickerIndex % tickerColors.length];
+  };
+
   return (
     <ResponsiveContainer width="100%" height={400}>
       <LineChart
         data={processedData}
-        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
       >
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="timestamp" />
-        <YAxis />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="timestamp" dy={19} />
         <Tooltip />
-        <Legend />
-        {tickers.map((ticker) => (
+        <YAxis
+          axisLine={false}
+          tickFormatter={(val) => `$${val}`}
+          tickLine={false}
+        />
+        {tickers.map((ticker, index) => (
           <Line
             key={ticker}
             type="monotone"
             dataKey={ticker}
             name={ticker}
-            stroke={tickerColors[ticker] || "#8884d8"}
-            activeDot={{ r: 6 }}
+            stroke={getColorForTicker(index)}
             connectNulls={true}
+            dot={false}
           />
         ))}
       </LineChart>

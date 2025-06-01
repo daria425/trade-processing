@@ -2,6 +2,13 @@ import { marketDataWebsocketUrl } from "@/config/api.config";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { useEffect, useState } from "react";
 import { useMarketDataStream } from "../../hooks/useMarketDataStream";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import MarketDataChart from "./MarketDataChart";
 const MOCK_DATA = [
   [
@@ -124,5 +131,16 @@ export default function DataStream({
   //       </div>
   //     );
   //   }
-  return <MarketDataChart chartData={MOCK_DATA} />; // Use MOCK_DATA for now
+  return (
+    <Card className="bg-slate-900 text-white border-1 border-slate-800 ">
+      <CardHeader>
+        <CardTitle>Market Data Stream</CardTitle>
+        <CardDescription>Live market data for selected tickers</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <MarketDataChart chartData={MOCK_DATA} />{" "}
+        {/* Use MOCK_DATA for now, add conditional rendering later */}
+      </CardContent>
+    </Card>
+  );
 }
