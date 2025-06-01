@@ -5,6 +5,7 @@ interface Trader {
   name?: string;
   created_at: string;
   updated_at: string;
+  is_messaging_enabled: boolean;
 }
 export interface UserData {
   trader: Trader;

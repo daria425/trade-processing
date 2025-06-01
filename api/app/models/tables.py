@@ -15,6 +15,7 @@ class Trader(Base):
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at=Column(DateTime(timezone=True), nullable=True)
     last_seen_at=Column(DateTime(timezone=True), nullable=True)
+    is_messaging_enabled = Column(Boolean, default=False, nullable=False)
 
 
     notifications = relationship("Notification", back_populates="trader")
