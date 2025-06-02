@@ -38,14 +38,18 @@ async def login_trader(uid:str, session: AsyncSession) -> Trader:
         raise ValueError("Trader does not exist")
     return trader
 
+
 async def update_notification_token(uid:str, token:str, session: AsyncSession) -> None:
     trader = await get_trader_by_id(uid, session)
     if not trader.notification_tokens:
         trader.notification_tokens = []
     if token not in trader.notification_tokens:
-        trader.notification_tokens.apppend(token)
-    trader.updated_at = datetime.now(timezone.utc)
-    trader.last_seen_at = datetime.now(timezone.utc)
+        trader.notification_tokens.append(token)
+    now= datetime.now(timezone.utc)
+    trader.status = "online"
+    trader.updated_at = now
+    trader.last_seen_at = now
+    trader.is_messaging_enabled = True
     session.add(trader)
     await session.commit()
     logger.info(f"Notification token updated for trader {uid}")

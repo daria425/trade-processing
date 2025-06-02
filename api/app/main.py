@@ -159,11 +159,11 @@ async def login_trader_endpoint(request: Request, session=Depends(init_async_ses
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/trader/notification-token")
-async def update_notification_token(request: Request, token: str = Body(...), session=Depends(init_async_session)):
+async def update_notification_token_endpoint(request: Request, notification_token: str = Body(..., embed=True), session=Depends(init_async_session)):
     try:
         user_data = request.state.user
         uid = user_data["uid"]
-        await update_notification_token(uid=uid, token=token, session=session)
+        await update_notification_token(uid=uid, token=notification_token, session=session)
         logger.info(f"Notification token updated for trader {uid}")
         return JSONResponse(
             status_code=200,

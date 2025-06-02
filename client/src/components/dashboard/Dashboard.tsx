@@ -2,12 +2,76 @@ import { useOutletContext } from "react-router";
 import type { AuthContextType } from "../../types/auth.types";
 import { useState } from "react";
 import { getToken } from "firebase/messaging";
+import { apiConfig } from "@/config/api.config";
 import { messaging } from "../../config/firebase.config";
 import DataStream from "./DataStream";
+import axios from "axios";
 export default function Dashboard() {
   const { userData, getIdToken } = useOutletContext<AuthContextType>();
   const messagingEnabled = userData?.trader.is_messaging_enabled || false;
   const [fcmToken, setFcmToken] = useState<string | null>(null);
+  const [notificationUpdateSuccess, setNotificationUpdateSuccess] = useState<{
+    loading: boolean;
+    success: boolean;
+    error: string | null;
+  }>({
+    loading: false,
+    success: false,
+    error: null,
+  });
+
+  const handleNotificationUpdate = async (fcmToken: string) => {
+    try {
+      const idToken = await getIdToken();
+      const response = await apiConfig.put(
+        "/api/trader/notification-token",
+        {
+          notification_token: fcmToken,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+      if (response.status === 200) {
+        setNotificationUpdateSuccess({
+          loading: false,
+          success: true,
+          error: null,
+        });
+        console.log("Notification token updated successfully");
+      } else {
+        console.error("Failed to update notification token");
+        setNotificationUpdateSuccess({
+          loading: false,
+          success: false,
+          error: "Failed to update notification token",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating notification token:", error);
+
+      // Extract the most meaningful error message from the Axios error
+      let errorMessage = "Unknown error occurred";
+      if (axios.isAxiosError(error)) {
+        // Get response error message if available
+        errorMessage =
+          error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message ||
+          "Server error";
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      setNotificationUpdateSuccess({
+        loading: false,
+        success: false,
+        error: errorMessage,
+      });
+    }
+  };
   const handleEnableNotifications = async () => {
     try {
       const registration = await navigator.serviceWorker.register(
@@ -26,14 +90,7 @@ export default function Dashboard() {
 
       if (token) {
         setFcmToken(token);
-        console.log("✅ FCM Token:", token);
-
-        // Optionally send it to your backend:
-        // await fetch('/api/trader/notification-token', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ token }),
-        // });
+        await handleNotificationUpdate(token);
       } else {
         console.warn("❌ No token retrieved");
       }
@@ -41,6 +98,7 @@ export default function Dashboard() {
       console.error("FCM error", error);
     }
   };
+
   return (
     <div className="text-white p-8">
       <div className="max-w-5xl mx-auto">
