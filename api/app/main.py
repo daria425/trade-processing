@@ -7,6 +7,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
     Depends,
+    Body,
 )
 
 from fastapi.responses import JSONResponse
@@ -27,7 +28,7 @@ from app.db.database_connection import (
     AsyncSessionLocal,
     init_async_session,
 )
-from app.db.trader_store import signup_trader, login_trader
+from app.db.trader_store import signup_trader, login_trader, update_notification_token
 from app.core.market_data import MarketDataStreamer
 from dotenv import load_dotenv
 import asyncio
@@ -157,6 +158,20 @@ async def login_trader_endpoint(request: Request, session=Depends(init_async_ses
         logger.error(f"Error during trader login: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.put("/api/trader/notification-token")
+async def update_notification_token(request: Request, token: str = Body(...), session=Depends(init_async_session)):
+    try:
+        user_data = request.state.user
+        uid = user_data["uid"]
+        await update_notification_token(uid=uid, token=token, session=session)
+        logger.info(f"Notification token updated for trader {uid}")
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Notification token updated successfully"},
+        )
+    except Exception as e:
+        logger.error(f"Error updating notification token: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/trades/send")
 async def make_trade_order(
