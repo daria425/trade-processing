@@ -123,6 +123,9 @@ async def signup_trader_endpoint(
             "last_seen_at": (
                 new_trader.last_seen_at.isoformat() if new_trader.last_seen_at else None
             ),
+            "is_messaging_enabled": new_trader.is_messaging_enabled,
+            "cash_balance": new_trader.cash_balance,
+            "notification_tokens": new_trader.notification_tokens or [],
         }
         return JSONResponse(
             status_code=201,
@@ -151,6 +154,9 @@ async def login_trader_endpoint(request: Request, session=Depends(init_async_ses
             "last_seen_at": (
                 trader.last_seen_at.isoformat() if trader.last_seen_at else None
             ),
+            "is_messaging_enabled": trader.is_messaging_enabled,
+            "cash_balance": trader.cash_balance,
+            "notification_tokens": trader.notification_tokens or [],
         }
         return JSONResponse(
             status_code=200,
