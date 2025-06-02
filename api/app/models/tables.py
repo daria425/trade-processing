@@ -1,7 +1,8 @@
 from app.db.database_connection import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, String, ForeignKey, Boolean, DateTime, func
+from sqlalchemy import Column, String, ForeignKey, Boolean, DateTime, func, Float, UUID
 from datetime import datetime, timezone
+from uuid import uuid4
 import uuid
 from sqlalchemy.dialects.postgresql import ARRAY
 class Trader(Base):
@@ -16,6 +17,9 @@ class Trader(Base):
     updated_at=Column(DateTime(timezone=True), nullable=True)
     last_seen_at=Column(DateTime(timezone=True), nullable=True)
     is_messaging_enabled = Column(Boolean, default=False, nullable=False)
+    cash_balance: float = Column(Float, default=100000.0)
+    holdings = relationship("Holding", back_populates="trader", cascade="all, delete-orphan")
+
 
 
     notifications = relationship("Notification", back_populates="trader")
@@ -30,3 +34,12 @@ class Notification(Base):
     updated_at=Column(DateTime(timezone=True), nullable=True)
     trader_id = Column(String, ForeignKey("traders.id"))
     trader = relationship("Trader", back_populates="notifications")
+    
+
+class Holding(Base):
+    id = Column(UUID, primary_key=True, default=uuid4)
+    trader_id = Column(ForeignKey("traders.id"))
+    symbol = Column(String, nullable=False)
+    quantity = Column(Float, nullable=False)
+    price = Column(Float, nullable=False)
+

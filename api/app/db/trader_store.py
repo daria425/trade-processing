@@ -1,8 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.tables import Trader
+from app.models.tables import Trader, Holding
 from datetime import datetime, timezone
 from app.utils.logger import logger
+import yfinance as yf
 async def get_trader_by_id(trader_id: str, session: AsyncSession) -> Trader | None:
     result = await session.execute(select(Trader).where(Trader.id == trader_id))
     trader = result.scalar_one_or_none()
@@ -29,15 +30,38 @@ async def signup_trader(uid:str, email:str, name:str, session: AsyncSession) -> 
     session.add(new_trader)
     await session.commit()
     await session.refresh(new_trader)
-    return new_trader
+    return {
+        "trader": new_trader,
+        "holdings": [],
+        "portfolio_value": 0.0,
+    }
 
 async def login_trader(uid:str, session: AsyncSession) -> Trader:
     existing_trader = await session.execute(select(Trader).where(Trader.id == uid))
     trader = existing_trader.scalar_one_or_none()
     if not trader:
         raise ValueError("Trader does not exist")
-    return trader
 
+    await session.refresh(trader, ["holdings"])
+
+    portfolio_value = 0.0
+    for holding in trader.holdings:
+        try:
+            price_data = yf.download(holding.symbol, period="1d", interval="1m", progress=False)
+            if price_data.empty:
+                logger.warning(f"No price data found for {holding.symbol}")
+                continue
+            current_price = price_data["Close"].iloc[-1]
+            portfolio_value += holding.quantity * current_price
+        except Exception as e:
+            logger.error(f"Error fetching price for {holding.symbol}: {e}")
+            continue
+
+    return {
+        "trader": trader,
+        "holdings": trader.holdings,
+        "portfolio_value": portfolio_value,
+    }
 
 async def update_notification_token(uid:str, token:str, session: AsyncSession) -> None:
     trader = await get_trader_by_id(uid, session)

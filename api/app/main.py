@@ -108,9 +108,10 @@ async def signup_trader_endpoint(
         uid = user_data["uid"]
         email = user_data.get("email")
         name = sign_up_request.name
-        new_trader = await signup_trader(
+        signup_data = await signup_trader(
             uid=uid, email=email, name=name, session=session
         )
+        new_trader = signup_data["trader"]
         trader_dict = {
             "id": new_trader.id,
             "trader_id": uid,
@@ -125,7 +126,7 @@ async def signup_trader_endpoint(
         }
         return JSONResponse(
             status_code=201,
-            content={"message": "Trader signed up successfully", "trader": trader_dict},
+            content={"message": "Trader signed up successfully", "trader": trader_dict, "holdings": signup_data["holdings"], "portfolio_value": signup_data["portfolio_value"]},
         )
     except Exception as e:
         logger.error(f"Error during trader signup: {str(e)}")
@@ -137,7 +138,8 @@ async def login_trader_endpoint(request: Request, session=Depends(init_async_ses
     try:
         user_data = request.state.user
         uid = user_data["uid"]
-        trader = await login_trader(uid=uid, session=session)
+        login_user_data = await login_trader(uid=uid, session=session)
+        trader= login_user_data["trader"]
         trader_dict = {
             "id": trader.id,
             "trader_id": uid,
@@ -152,7 +154,7 @@ async def login_trader_endpoint(request: Request, session=Depends(init_async_ses
         }
         return JSONResponse(
             status_code=200,
-            content={"message": "Trader logged in successfully", "trader": trader_dict},
+            content={"message": "Trader logged in successfully", "trader": trader_dict, "holdings": login_user_data["holdings"], "portfolio_value": login_user_data["portfolio_value"]},
         )
     except Exception as e:
         logger.error(f"Error during trader login: {str(e)}")
