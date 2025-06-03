@@ -46,6 +46,7 @@ async def login_trader(uid:str, session: AsyncSession) -> Trader:
     await session.refresh(trader, ["holdings"])
 
     portfolio_value = 0.0
+    holdings_list=[]
     for holding in trader.holdings:
         try:
             price_data = yf.download([holding.symbol], period="1d", interval="1m", progress=False)
@@ -54,13 +55,23 @@ async def login_trader(uid:str, session: AsyncSession) -> Trader:
                 continue
             current_price = price_data["Close"].iloc[-1] if not math.isnan(price_data["Close"].iloc[-1]) else 0.0
             portfolio_value += holding.quantity * current_price
+            holding_dict = {
+                "id": str(holding.id),  # Convert UUID to string
+                "symbol": holding.symbol,
+                "quantity": holding.quantity,
+                "price": holding.price,
+                "purchase_date": holding.purchase_date.isoformat() if holding.purchase_date else None,
+                "current_price": current_price,
+                "current_value": holding.quantity * current_price,
+            }
+            holdings_list.append(holding_dict)
         except Exception as e:
             logger.error(f"Error fetching price for {holding.symbol}: {e}")
             continue
 
     return {
         "trader": trader,
-        "holdings": trader.holdings,
+        "holdings": holdings_list,
         "portfolio_value": portfolio_value,
     }
 
