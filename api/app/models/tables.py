@@ -37,9 +37,12 @@ class Notification(Base):
     
 
 class Holding(Base):
+    __tablename__ = "holdings"
     id = Column(UUID, primary_key=True, default=uuid4)
     trader_id = Column(ForeignKey("traders.id"))
     symbol = Column(String, nullable=False)
     quantity = Column(Float, nullable=False)
     price = Column(Float, nullable=False)
+    trader= relationship("Trader", back_populates="holdings")
+    purchase_date = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 

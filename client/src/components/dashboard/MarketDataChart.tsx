@@ -18,7 +18,17 @@ export default function MarketDataChart({
   chartData: Array<MarketDataPoint[]>;
 }) {
   const processedData: ProcessedDataPoint[] = [];
+  if (!chartData || chartData.length === 0) {
+    return <div className="text-center p-4">No market data available</div>;
+  }
+
   chartData.forEach((batch) => {
+    // Check if batch is an array before using forEach
+    if (!Array.isArray(batch) || batch.length === 0) {
+      console.warn("Invalid batch received:", batch);
+      return; // Skip this iteration
+    }
+
     // Get the timestamp from the first item in the batch
     const timestamp = batch[0].date;
     const formattedTimestamp = new Date(timestamp).toLocaleTimeString([], {
@@ -32,7 +42,14 @@ export default function MarketDataChart({
 
     // Add price for each ticker in this batch
     batch.forEach((item) => {
-      dataPoint[item.ticker] = item.price;
+      if (
+        item &&
+        typeof item === "object" &&
+        "ticker" in item &&
+        "price" in item
+      ) {
+        dataPoint[item.ticker] = item.price;
+      }
     });
 
     processedData.push(dataPoint);
@@ -41,9 +58,13 @@ export default function MarketDataChart({
   // Get unique tickers from all data points
   const allTickers = new Set<string>();
   chartData.forEach((batch) => {
-    batch.forEach((item) => {
-      allTickers.add(item.ticker);
-    });
+    if (Array.isArray(batch)) {
+      batch.forEach((item) => {
+        if (item && typeof item === "object" && "ticker" in item) {
+          allTickers.add(item.ticker);
+        }
+      });
+    }
   });
   const tickerColors = [
     "oklch(78.5% 0.115 274.713)",
