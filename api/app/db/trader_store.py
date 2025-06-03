@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.tables import Trader, Holding
+from app.models.tables import Trader
+import math
 from datetime import datetime, timezone
 from app.utils.logger import logger
 import yfinance as yf
@@ -47,11 +48,11 @@ async def login_trader(uid:str, session: AsyncSession) -> Trader:
     portfolio_value = 0.0
     for holding in trader.holdings:
         try:
-            price_data = yf.download(holding.symbol, period="1d", interval="1m", progress=False)
+            price_data = yf.download([holding.symbol], period="1d", interval="1m", progress=False)
             if price_data.empty:
                 logger.warning(f"No price data found for {holding.symbol}")
                 continue
-            current_price = price_data["Close"].iloc[-1]
+            current_price = price_data["Close"].iloc[-1] if not math.isnan(price_data["Close"].iloc[-1]) else 0.0
             portfolio_value += holding.quantity * current_price
         except Exception as e:
             logger.error(f"Error fetching price for {holding.symbol}: {e}")

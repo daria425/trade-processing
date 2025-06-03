@@ -10,6 +10,7 @@ export default function Dashboard() {
   const { userData, getIdToken } = useOutletContext<AuthContextType>();
   const messagingEnabled = userData?.trader.is_messaging_enabled || false;
   const [fcmToken, setFcmToken] = useState<string | null>(null);
+
   const [notificationUpdateSuccess, setNotificationUpdateSuccess] = useState<{
     loading: boolean;
     success: boolean;
@@ -19,6 +20,7 @@ export default function Dashboard() {
     success: false,
     error: null,
   });
+  console.log("User Data:", userData);
 
   const handleNotificationUpdate = async (fcmToken: string) => {
     try {

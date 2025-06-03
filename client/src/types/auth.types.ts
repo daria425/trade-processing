@@ -5,10 +5,23 @@ interface Trader {
   name?: string;
   created_at: string;
   updated_at: string;
+  last_seen_at: string;
+  notification_tokens: string[];
   is_messaging_enabled: boolean;
+  cash_balance: number;
+}
+interface Holding {
+  id: string;
+  symbol: string;
+  quantity: number;
+  price: number;
+  purchase_date: string;
+  trader_id: string;
 }
 export interface UserData {
   trader: Trader;
+  portfolio_value: number;
+  holdings: Holding[];
 }
 
 type AuthError = {

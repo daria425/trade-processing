@@ -4,6 +4,7 @@ from app.utils.logger import logger
 import asyncio
 from typing import Set, Tuple
 import pandas as pd
+import math
 from app.utils.date_utils import create_timestamp
 class MarketDataStreamer:
     def __init__(self):
@@ -31,8 +32,9 @@ class MarketDataStreamer:
             # Handle values whether they're single values or Series objects
             def safe_float(value):
                 if hasattr(value, "iloc"):  # Check if it's a Series
-                    return float(value.iloc[0])
-                return float(value)
+                    value=float(value.iloc[0])
+                value=float(value)
+                return value if not math.isnan(value) else None
             # Create result dictionary with safely converted values
             result = {
                 "ticker": ticker,
@@ -90,7 +92,7 @@ class MarketDataStreamer:
                         
                         results[ticker] = {
                             "ticker": ticker,
-                            "price": price,
+                            "price": None if math.isnan(price) else price,
                             "date": timestamp
                         }
                     except Exception as e:
