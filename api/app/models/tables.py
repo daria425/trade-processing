@@ -19,6 +19,7 @@ class Trader(Base):
     is_messaging_enabled = Column(Boolean, default=False, nullable=False)
     cash_balance: float = Column(Float, default=100000.0)
     holdings = relationship("Holding", back_populates="trader", cascade="all, delete-orphan")
+    trades= relationship("Trade", back_populates="trader", cascade="all, delete-orphan")
 
 
 
@@ -45,4 +46,15 @@ class Holding(Base):
     price = Column(Float, nullable=False)
     trader= relationship("Trader", back_populates="holdings")
     purchase_date = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+
+class Trade(Base):
+    __tablename__ = "trades"
+    id = Column(UUID, primary_key=True, default=uuid4)
+    trader_id = Column(ForeignKey("traders.id"))
+    symbol = Column(String, nullable=False)
+    quantity = Column(Float, nullable=False)
+    price = Column(Float, nullable=False)
+    trade_type = Column(String, nullable=False)  # 'buy' or 'sell'
+    trade_date = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    trader= relationship("Trader", back_populates="trades")
 
