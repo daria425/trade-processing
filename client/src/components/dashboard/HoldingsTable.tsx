@@ -18,7 +18,7 @@ export default function HoldingsTable({
   const headers = [
     "Symbol",
     "Quantity",
-    "Purchase Price",
+    "Total Value",
     "Purchase Date",
     "Current Price",
     "Current Value",
@@ -42,7 +42,9 @@ export default function HoldingsTable({
               <TableRow key={holding.id}>
                 <TableCell>{holding.symbol}</TableCell>
                 <TableCell>{holding.quantity}</TableCell>
-                <TableCell>${holding.price.toFixed(2)}</TableCell>
+                <TableCell>
+                  ${holding.current_price * holding.quantity}
+                </TableCell>
                 <TableCell>
                   {new Date(holding.purchase_date).toLocaleDateString()}
                 </TableCell>

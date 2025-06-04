@@ -1,9 +1,10 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.tables import Trader
+from app.models.tables import Trader, Holding, Trade
 import math
 from datetime import datetime, timezone
 from app.utils.logger import logger
+from typing import Literal
 import yfinance as yf
 async def get_trader_by_id(trader_id: str, session: AsyncSession) -> Trader | None:
     result = await session.execute(select(Trader).where(Trader.id == trader_id))
@@ -11,7 +12,88 @@ async def get_trader_by_id(trader_id: str, session: AsyncSession) -> Trader | No
     if not trader:
         raise ValueError(f"Trader with ID {trader_id} not found")
     return trader
+async def update_on_trade(trader:Trader, trade_type:Literal["buy", "sell"], quantity:int, price:int, symbol:str,session: AsyncSession):
+    portfolio_value_change=quantity * price
+    now=datetime.now(timezone.utc)
+    new_trade=Trade(
+        trader_id=trader.id,
+        symbol=symbol,
+        quantity=quantity,
+        price=price,
+        trade_type=trade_type,
+        trade_date=now)
+    session.add(new_trade)
+    if trade_type=="buy":
+        if trader.cash_balance < portfolio_value_change:
+            raise ValueError("Insufficient cash balance for this trade")
+        trader.cash_balance -= portfolio_value_change
+        existing_holding=await session.execute(select(Holding).where(Holding.trader_id == trader.id, Holding.symbol == symbol))
+        existing_holding = existing_holding.scalar_one_or_none()
+        if existing_holding:
+            existing_holding.quantity += quantity
+        else:
+            new_holding = Holding(
+                trader_id=trader.id,
+                symbol=symbol,
+                quantity=quantity,
+                purchase_date=now
+            )
+            session.add(new_holding)
+    elif trade_type=="sell":
+        existing_holding = await session.execute(select(Holding).where(Holding.trader_id == trader.id, Holding.symbol == symbol))
+        existing_holding = existing_holding.scalar_one_or_none()
+        if not existing_holding or existing_holding.quantity < quantity:
+            raise ValueError("Insufficient holdings to sell")
+        existing_holding.quantity -= quantity
+        if existing_holding.quantity == 0:
+            session.delete(existing_holding)
+        trader.cash_balance += portfolio_value_change
+    trader.updated_at = now
+    trader.last_seen_at = now
+    session.add(trader)
+    await session.commit()
+    await session.refresh(trader)
+    await session.refresh(trader, ["holdings"])
+    
+    # Calculate updated portfolio value and format holdings
+    portfolio_value = 0.0
+    holdings_list = []
+    
+    for holding in trader.holdings:
+        try:
+            price_data = yf.download([holding.symbol], period="1d", interval="1m", progress=False)
+            if price_data.empty:
+                logger.warning(f"No price data found for {holding.symbol}")
+                current_price = 0.0
+            else:
+                latest_price = price_data["Close"].iloc[-1]
+                if not math.isnan(latest_price):
+                    current_price = float(latest_price)
+                else:
+                    current_price = 0.0
+            
+            current_value = holding.quantity * current_price
+            portfolio_value += current_value
+            
+            holding_dict = {
+                "id": str(holding.id),
+                "symbol": holding.symbol,
+                "quantity": holding.quantity,
+                "purchase_date": holding.purchase_date.isoformat() if holding.purchase_date else None,
+                "current_price": current_price,
+                "current_value": current_value,
+            }
+            holdings_list.append(holding_dict)
+        except Exception as e:
+            logger.error(f"Error fetching price for {holding.symbol}: {e}")
+            continue
+    return {
+        "trader": trader,
+        "holdings": holdings_list,
+        "portfolio_value": portfolio_value,
+    }
 
+    
 async def signup_trader(uid:str, email:str, name:str, session: AsyncSession) -> Trader:
     exisiting_trader=await session.execute(select(Trader).where(Trader.id == uid))
     existing_trader = exisiting_trader.scalar_one_or_none()

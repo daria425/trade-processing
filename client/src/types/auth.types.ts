@@ -14,7 +14,7 @@ interface Holding {
   id: string;
   symbol: string;
   quantity: number;
-  price: number;
+  total_value: number;
   purchase_date: string;
   trader_id: string;
   current_price: number;
