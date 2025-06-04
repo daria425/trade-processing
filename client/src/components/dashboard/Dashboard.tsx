@@ -5,6 +5,7 @@ import { getToken } from "firebase/messaging";
 import { apiConfig } from "@/config/api.config";
 import { messaging } from "../../config/firebase.config";
 import DataStream from "./DataStream";
+import HoldingsTable from "./HoldingsTable";
 import axios from "axios";
 export default function Dashboard() {
   const { userData, getIdToken } = useOutletContext<AuthContextType>();
@@ -119,6 +120,7 @@ export default function Dashboard() {
             </button>
           )}
           <DataStream getIdToken={getIdToken} />
+          <HoldingsTable holdings={userData?.holdings || []} />
         </div>
       </div>
     </div>
