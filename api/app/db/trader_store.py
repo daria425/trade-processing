@@ -53,7 +53,11 @@ async def login_trader(uid:str, session: AsyncSession) -> Trader:
             if price_data.empty:
                 logger.warning(f"No price data found for {holding.symbol}")
                 continue
-            current_price = price_data["Close"].iloc[-1] if not math.isnan(price_data["Close"].iloc[-1]) else 0.0
+            latest_price = price_data["Close"].iloc[-1]
+            if not math.isnan(latest_price):
+                current_price = float(latest_price)
+            else:
+                current_price = 0.0
             portfolio_value += holding.quantity * current_price
             holding_dict = {
                 "id": str(holding.id),  # Convert UUID to string
@@ -68,7 +72,7 @@ async def login_trader(uid:str, session: AsyncSession) -> Trader:
         except Exception as e:
             logger.error(f"Error fetching price for {holding.symbol}: {e}")
             continue
-
+    print(holdings_list, portfolio_value)
     return {
         "trader": trader,
         "holdings": holdings_list,
