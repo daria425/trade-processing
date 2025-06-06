@@ -110,26 +110,51 @@ class MarketDataStreamer:
             logger.error(f"Error fetching price data for tickers {tickers}: {e}")
             return {ticker: {"ticker": ticker, "price": None, "date": None, "error": f"Download failed: {str(e)}"} for ticker in tickers}
 
+
     async def stream_price_data(self, tickers: list, trader_id:str, ws_manager:WebsocketManager):
         """
         Asynchronously fetches the latest price data for a given stock ticker.
         
         :param ticker: Stock ticker symbol (e.g., 'AAPL', 'GOOGL')
+        :param trader_id: Unique identifier for the trader
+        :param ws_manager: Websocket manager instance to send data
         :return: Dictionary with latest price data
         """
-        if trader_id in self.active_streams:
-            logger.warning(f"Stream for trader {trader_id} already active for ticker {ticker}.")
-            return
         key=(trader_id, tuple(sorted(tickers)))
+        if key in self.active_streams:
+            logger.info(f"Stream for {key} is already active, skipping new stream.")
+            return
         self.active_streams.add(key)
+        logger.info(f"Starting stream for {trader_id} with tickers {tickers}")
         try:
             while True:
-                        data=self.get_multiple_price_data(tickers)
+                if not ws_manager.has_active_connection(trader_id):
+                    logger.info(f"No active websocket connection for trader {trader_id}, stopping stream.")
+                    break
+                try:
+                        data = self.get_multiple_price_data(tickers)
                         await ws_manager.notify(trader_id, data)
-                        await asyncio.sleep(10)
+                except asyncio.CancelledError:
+                        logger.info(f"Market data stream for trader {trader_id} cancelled")
+                        raise  # Re-raise to trigger cleanup
+                except Exception as e:
+                        logger.error(f"Error while sending price data: {str(e)}")
+                        # If error occurs, check connection before continuing
+                        if not ws_manager.has_active_connection(trader_id):
+                            break
+                            
+                await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            logger.info(f"Market data stream for trader {trader_id} cancelled")
+            # Let the cancellation propagate after cleanup
+            raise
         except Exception as e:
-                    print(f"Error while sending price data: {e}")
+            logger.error(f"Error in market data stream for trader {trader_id}: {str(e)}")
         finally:
-                 self.active_streams.remove(key)
+            # Always clean up, even if there's an error
+            if key in self.active_streams:
+                self.active_streams.remove(key)
+            logger.info(f"Stopped market data stream for trader {trader_id}")
+
 
 

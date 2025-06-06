@@ -21,6 +21,9 @@ class WebsocketManager:
             print(f"Sending message to trader {trader_id}: {message}")
             await ws.send_json(message)
 
+    def has_active_connection(self, trader_id: str) -> bool:
+        return trader_id in self.clients
+
     async def broadcast(self, message):
         async with self.lock:
             for ws in self.clients.values():

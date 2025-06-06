@@ -4,8 +4,10 @@ import os
 import json
 from dotenv import load_dotenv  
 from app.utils.logger import logger
+
 load_dotenv()
-FIREBASE_CERT=os.getenv("FIREBASE_CERT")
+with open("/home/daria/projects/trade-processing/api/firebase-adminsdk.json") as f:
+    firebase_credentials = json.load(f)
 class FirebaseConfig:
     _instance=None
 
@@ -24,11 +26,10 @@ class FirebaseConfig:
         """Initialize Firebase Admin SDK"""
         if not self.app:
             try:
-                firebase_credentials=json.loads(FIREBASE_CERT)
                 cred = credentials.Certificate(firebase_credentials)
                 self.app = firebase_admin.initialize_app(cred)
                 logger.info("🔥 Firebase Admin SDK initialized 🔥")
             except Exception as e:
-                logger.error(f"❌ Failed to initialize Firebase: {e} ❌")
+                logger.error(f"❌ Failed to initialize Firebase: {e} ❌", exc_info=True)
 
 

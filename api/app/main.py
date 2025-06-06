@@ -9,7 +9,8 @@ from fastapi import (
     Depends,
     Body,
 )
-
+import signal
+from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from typing import List
 from app.utils.auth_utils import get_token_data
@@ -43,12 +44,23 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
         print("Database initialized")
 
-
+@asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.background_tasks = set()
     firebase_instance = FirebaseConfig.get_instance()
     firebase_instance.initialize_firebase_app()
     await init_db()
+    def handle_exit(sig, frame):
+        for task in app.state.background_tasks:
+            task.cancel()
+    
+    signal.signal(signal.SIGINT, handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
+    
     yield
+
+    for task in app.state.background_tasks:
+        task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -220,12 +232,21 @@ async def get_market_data(
     ticker: List[str] = Query(..., description="List of stock tickers"),
 ):
     trader_id = request.state.user["uid"] if not use_test_auth else TEST_TRADER_ID
-    bg_tasks.add_task(
-        streamer.stream_price_data,
-        trader_id=trader_id,
-        tickers=ticker,
-        ws_manager=market_data_ws_manager,
+    # bg_tasks.add_task(
+    #     streamer.stream_price_data,
+    #     trader_id=trader_id,
+    #     tickers=ticker,
+    #     ws_manager=market_data_ws_manager,
+    # )
+    task=asyncio.create_task(
+        streamer.stream_price_data(
+            trader_id=trader_id,
+            tickers=ticker,
+            ws_manager=market_data_ws_manager,
+        )
     )
+    request.app.state.background_tasks.add(task)
+    task.add_done_callback(lambda t: request.app.state.background_tasks.remove(t))
     return {
         "status": "success",
         "message": f"Market data for {ticker} is being sent to the websocket.",
@@ -252,7 +273,7 @@ async def ws_endpoint(websocket: WebSocket, token: str=Query(..., description="B
         while True:
             await asyncio.sleep(60)  # Keeps the connection alive
     except WebSocketDisconnect:
-        await ws_manager_instance.disconnect(websocket, trader_id)
+        await ws_manager_instance.disconnect(trader_id)
 
 
 @app.websocket("/market-data/ws")
@@ -267,4 +288,4 @@ async def market_data_ws_endpoint(websocket: WebSocket, token: str = Query(..., 
                 logger.info(f"WebSocket connection for trader {trader_id} closed.")
                 break
     except WebSocketDisconnect:
-        await market_data_ws_manager.disconnect(websocket, trader_id)
+        await market_data_ws_manager.disconnect(trader_id)
