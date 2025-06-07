@@ -21,7 +21,6 @@ class WebsocketManager:
             if not ws:
                 return False
             try:
-                logger.info(f"Sending message to trader {trader_id}: {message}")
                 await ws.send_json(message)
                 return True
             except RuntimeError as e:

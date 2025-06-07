@@ -7,6 +7,7 @@ import { messaging } from "../../config/firebase.config";
 import DataStream from "./DataStream";
 import HoldingsTable from "./HoldingsTable";
 import TradeForm from "./TradeForm";
+import TradeProgress from "./TradeProgress";
 import axios from "axios";
 export default function Dashboard() {
   const { userData, getIdToken } = useOutletContext<AuthContextType>();
@@ -194,6 +195,7 @@ export default function Dashboard() {
             </button>
           )}
           <DataStream getIdToken={getIdToken} />
+          <TradeProgress getIdToken={getIdToken} />
           <HoldingsTable
             cashBalance={userData?.trader.cash_balance || 0}
             holdings={userData?.holdings || []}
