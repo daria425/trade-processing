@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import WebSocket
-
+from app.utils.logger import logger
 class WebsocketManager:
     def __init__(self):
         self.clients = {}
@@ -18,8 +18,22 @@ class WebsocketManager:
     async def notify(self, trader_id, message):
         async with self.lock:
             ws=self.clients.get(trader_id)
-            print(f"Sending message to trader {trader_id}: {message}")
-            await ws.send_json(message)
+            if not ws:
+                return False
+            try:
+                logger.info(f"Sending message to trader {trader_id}: {message}")
+                await ws.send_json(message)
+                return True
+            except RuntimeError as e:
+                if "close" in str(e):
+                    logger.warning(f"WebSocket connection closed for trader {trader_id}: {str(e)}")
+                    self.clients.pop(trader_id, None)
+                    return False
+            except Exception as e:
+                logger.error(f"Error sending message to trader {trader_id}: {str(e)}")
+                return False
+                
+
 
     def has_active_connection(self, trader_id: str) -> bool:
         return trader_id in self.clients

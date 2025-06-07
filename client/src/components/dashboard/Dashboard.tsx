@@ -1,11 +1,12 @@
 import { useOutletContext } from "react-router";
-import type { AuthContextType } from "../../types/auth.types";
+import type { AuthContextType, Holding } from "../../types/auth.types";
 import { useState } from "react";
 import { getToken } from "firebase/messaging";
 import { apiConfig } from "@/config/api.config";
 import { messaging } from "../../config/firebase.config";
 import DataStream from "./DataStream";
 import HoldingsTable from "./HoldingsTable";
+import TradeForm from "./TradeForm";
 import axios from "axios";
 export default function Dashboard() {
   const { userData, getIdToken } = useOutletContext<AuthContextType>();
@@ -21,8 +22,37 @@ export default function Dashboard() {
     success: false,
     error: null,
   });
+  const [tradeFormData, setTradeFormData] = useState<{
+    tradeType: "buy" | "sell";
+    cashBalance: number;
+    holding: {
+      symbol: string;
+      quantity: number;
+      current_price: number;
+      current_value: number;
+    };
+  } | null>(null);
   console.log("User Data:", userData);
 
+  const handleOpenTradeForm = (
+    tradeType: "buy" | "sell",
+    cashBalance: number,
+    holding: Holding
+  ) => {
+    setTradeFormData({
+      tradeType,
+      cashBalance,
+      holding: {
+        symbol: holding.symbol,
+        quantity: holding.quantity,
+        current_price: holding.current_price,
+        current_value: holding.current_value,
+      },
+    });
+  };
+  const handleCloseTradeForm = () => {
+    setTradeFormData(null);
+  };
   const handleNotificationUpdate = async (fcmToken: string) => {
     try {
       const idToken = await getIdToken();
@@ -120,7 +150,20 @@ export default function Dashboard() {
             </button>
           )}
           <DataStream getIdToken={getIdToken} />
-          <HoldingsTable holdings={userData?.holdings || []} />
+          <HoldingsTable
+            cashBalance={userData?.trader.cash_balance || 0}
+            holdings={userData?.holdings || []}
+            handleOpenTradeForm={handleOpenTradeForm}
+          />
+          {tradeFormData && (
+            <TradeForm
+              tradeType={tradeFormData.tradeType}
+              cashBalance={tradeFormData.cashBalance}
+              holding={tradeFormData.holding}
+              handleCloseTradeForm={handleCloseTradeForm}
+              getIdToken={getIdToken}
+            />
+          )}
         </div>
       </div>
     </div>

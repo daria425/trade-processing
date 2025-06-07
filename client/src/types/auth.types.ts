@@ -10,7 +10,7 @@ interface Trader {
   is_messaging_enabled: boolean;
   cash_balance: number;
 }
-interface Holding {
+export interface Holding {
   id: string;
   symbol: string;
   quantity: number;

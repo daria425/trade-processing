@@ -12,12 +12,10 @@ import uuid
 
 
 class Stock:
-    def __init__(self, ticker):
+    def __init__(self, ticker, price):
         self.ticker = ticker
+        self.price = price
 
-    def get_price(self):
-        price = random.uniform(80.0, 200.0)
-        return price
 
 
 class StockTrade:
@@ -26,6 +24,7 @@ class StockTrade:
         trader_id: str,
         stock: Stock,
         quantity: int,
+        type: Literal["buy", "sell"] = "buy",
         status: Literal["queued", "in_progress", "filled"] = "queued",
     ):
         """
@@ -40,6 +39,7 @@ class StockTrade:
         self.status = status
         self.quantity = quantity
         self.timestamp = None  # start time
+        self.type = type  # buy or sell
         self.stock = stock
 
     def start(self):
@@ -143,10 +143,10 @@ class TradeSystem:
             self.processors = []
         print("All trade processors shut down successfully")
 
-    async def run(self, trader_id: str, ticker: str, quantity: int, ws_manager: WebsocketManager, notification_service: NotificationService):
+    async def run(self, trader_id: str, ticker: str, quantity: int, price: int, ws_manager: WebsocketManager, notification_service: NotificationService):
         try:
             trader = Trader(trader_id=trader_id)
-            stock = Stock(ticker=ticker)
+            stock = Stock(ticker=ticker, price=price)
             trade = trader.make_trade_order(stock, quantity)
             await self.start_processors(ws_manager=ws_manager, trader_id=trader_id, notification_service=notification_service)
             await self.add_trade_order(trade)

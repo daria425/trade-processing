@@ -50,29 +50,15 @@ async def update_on_trade(trader:Trader, trade_type:Literal["buy", "sell"], quan
         trader.cash_balance += portfolio_value_change
     trader.updated_at = now
     trader.last_seen_at = now
-    session.add(trader)
     await session.commit()
     await session.refresh(trader)
-    await session.refresh(trader, ["holdings"])
-    
-    # Calculate updated portfolio value and format holdings
+    holdings=await session.execute(select(Holding).where(Holding.trader_id == trader.id))
+    holdings = holdings.scalars().all()
     portfolio_value = 0.0
     holdings_list = []
     
-    for holding in trader.holdings:
-        try:
-            price_data = yf.download([holding.symbol], period="1d", interval="1m", progress=False)
-            if price_data.empty:
-                logger.warning(f"No price data found for {holding.symbol}")
-                current_price = 0.0
-            else:
-                latest_price = price_data["Close"].iloc[-1]
-                if not math.isnan(latest_price):
-                    current_price = float(latest_price)
-                else:
-                    current_price = 0.0
-            
-            current_value = holding.quantity * current_price
+    for holding in holdings:
+            current_value = holding.quantity * price
             portfolio_value += current_value
             
             holding_dict = {
@@ -80,13 +66,10 @@ async def update_on_trade(trader:Trader, trade_type:Literal["buy", "sell"], quan
                 "symbol": holding.symbol,
                 "quantity": holding.quantity,
                 "purchase_date": holding.purchase_date.isoformat() if holding.purchase_date else None,
-                "current_price": current_price,
+                "current_price": price,
                 "current_value": current_value,
             }
             holdings_list.append(holding_dict)
-        except Exception as e:
-            logger.error(f"Error fetching price for {holding.symbol}: {e}")
-            continue
     return {
         "trader": trader,
         "holdings": holdings_list,

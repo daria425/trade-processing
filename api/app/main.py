@@ -204,12 +204,14 @@ async def make_trade_order(
         trader_id = request.state.user["uid"]
         ticker = trade_request.ticker
         quantity = trade_request.quantity
+        price= trade_request.price
         trade_system = TradeSystem(sessionmaker=AsyncSessionLocal)
         bg_tasks.add_task(
             trade_system.run,
             trader_id=trader_id,
             ticker=ticker,
             quantity=quantity,
+            price=price,
             ws_manager=ws_manager_instance,
             notification_service=notification_service,
         )

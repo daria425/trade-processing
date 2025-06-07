@@ -11,9 +11,17 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function HoldingsTable({
+  cashBalance,
   holdings,
+  handleOpenTradeForm,
 }: {
+  cashBalance: UserData["trader"]["cash_balance"];
   holdings: UserData["holdings"];
+  handleOpenTradeForm: (
+    tradeType: "buy" | "sell",
+    cashBalance: UserData["trader"]["cash_balance"],
+    holding: UserData["holdings"][number]
+  ) => void;
 }) {
   const headers = [
     "Symbol",
@@ -21,6 +29,7 @@ export default function HoldingsTable({
     "Purchase Date",
     "Current Price",
     "Current Value",
+    "Actions",
   ];
   return (
     <Card className="bg-slate-900 text-white border-1 border-slate-800">
@@ -46,6 +55,26 @@ export default function HoldingsTable({
                 </TableCell>
                 <TableCell>${holding.current_price.toFixed(2)}</TableCell>
                 <TableCell>${holding.current_value.toFixed(2)}</TableCell>
+                <TableCell className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      handleOpenTradeForm("buy", cashBalance, holding)
+                    }
+                    type="button"
+                    className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
+                  >
+                    Buy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleOpenTradeForm("sell", cashBalance, holding)
+                    }
+                    className="mt-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md"
+                  >
+                    Sell
+                  </button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

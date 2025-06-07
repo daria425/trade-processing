@@ -133,7 +133,9 @@ class MarketDataStreamer:
                     break
                 try:
                         data = self.get_multiple_price_data(tickers)
-                        await ws_manager.notify(trader_id, data)
+                        success=await ws_manager.notify(trader_id, data)
+                        if not success:
+                            break
                 except asyncio.CancelledError:
                         logger.info(f"Market data stream for trader {trader_id} cancelled")
                         raise  # Re-raise to trigger cleanup
