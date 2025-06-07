@@ -5,16 +5,21 @@ class NotificationService:
     def __init__(self):
         pass
     
-    async def send_notification(self, trader, ws_manager, session):
+    async def send_notification(self, trader, trade, ws_manager, session):
         trader_id=trader.id if trader else None
         notification=Notification(trader_id=trader_id, message="Trade completed!", read=False,created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc))
         session.add(notification)
         await session.commit()
         message={
-"id": str(notification.id),
+"trader_id": trader_id,
+"trade_id": trade.id,
+"ticker": trade.stock.ticker,
+"quantity": trade.quantity,
 "message": notification.message,
-"created_at": notification.created_at.isoformat()
+"event": "trade_completed",
+"progress": 100,
+"status":"success"
     }
         if trader:
             if trader.status=="online":

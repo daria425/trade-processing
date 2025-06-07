@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useState } from "react";
+import TradeProgress from "./TradeProgress";
 
 export default function TradeForm({
   tradeType,
@@ -18,7 +20,10 @@ export default function TradeForm({
   holding,
   handleCloseTradeForm,
   handleSubmitTrade,
+  getIdToken,
+  tradeStatus,
 }: {
+  tradeStatus: "pending" | "completed" | "failed" | null;
   tradeType: string;
   cashBalance: number;
   holding: {
@@ -27,6 +32,7 @@ export default function TradeForm({
     current_price: number;
     current_value: number;
   };
+  getIdToken: () => Promise<string>;
   handleCloseTradeForm: () => void;
   handleSubmitTrade: (data: {
     quantity: number;
@@ -34,6 +40,7 @@ export default function TradeForm({
     price: number;
   }) => void;
 }) {
+  const [activeTrade, setActiveTrade] = useState<boolean>(false);
   const createBuyFormSchema = () => {
     return z
       .object({
@@ -74,12 +81,13 @@ export default function TradeForm({
     console.log(
       `Submitting ${tradeType} trade for ${data.quantity} shares of ${holding.symbol} at $${holding.current_price} each.`
     );
+
     handleSubmitTrade({
       quantity: data.quantity,
       symbol: holding.symbol,
       price: holding.current_price,
     });
-    handleCloseTradeForm();
+    setActiveTrade(true);
   };
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
@@ -114,79 +122,92 @@ export default function TradeForm({
         </div>
 
         <div className="p-6 bg-gray-800">
-          <div className="flex justify-between mb-6 text-sm">
-            <div>
-              <p className="text-gray-500 dark:text-gray-400">Current Price</p>
-              <p className="font-medium">${holding.current_price.toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 dark:text-gray-400">
-                Available Balance
-              </p>
-              <p className="font-medium">${cashBalance.toFixed(2)}</p>
-            </div>
-            {tradeType === "sell" && (
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">Shares Owned</p>
-                <p className="font-medium">{holding.quantity}</p>
-              </div>
-            )}
-          </div>
-
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col gap-4"
-            >
-              <FormField
-                control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-700 dark:text-gray-300">
-                      Quantity
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Enter quantity"
-                        {...field}
-                        className="border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-red-500" />
-                  </FormItem>
-                )}
-              />
-
-              <div className="mt-2">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Order Summary
-                </p>
-                <div className="flex justify-between text-sm my-1">
-                  <span className="text-gray-500">Total Cost</span>
-                  <span>
-                    $
-                    {(form.watch("quantity") * holding.current_price).toFixed(
-                      2
-                    )}
-                  </span>
+          {tradeStatus && tradeStatus === "pending" ? (
+            <TradeProgress getIdToken={getIdToken} />
+          ) : (
+            <>
+              <div className="flex justify-between mb-6 text-sm">
+                <div>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Current Price
+                  </p>
+                  <p className="font-medium">
+                    ${holding.current_price.toFixed(2)}
+                  </p>
                 </div>
+                <div>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Available Balance
+                  </p>
+                  <p className="font-medium">${cashBalance.toFixed(2)}</p>
+                </div>
+                {tradeType === "sell" && (
+                  <div>
+                    <p className="text-gray-500 dark:text-gray-400">
+                      Shares Owned
+                    </p>
+                    <p className="font-medium">{holding.quantity}</p>
+                  </div>
+                )}
               </div>
 
-              <Button
-                type="submit"
-                className={`mt-4 w-full ${
-                  tradeType === "buy"
-                    ? "bg-indigo-600 hover:bg-indigo-700"
-                    : "bg-red-600 hover:bg-red-700"
-                } text-white py-2 rounded-md transition-colors`}
-              >
-                Place {tradeType.charAt(0).toUpperCase() + tradeType.slice(1)}{" "}
-                Order
-              </Button>
-            </form>
-          </Form>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="flex flex-col gap-4"
+                >
+                  <FormField
+                    control={form.control}
+                    name="quantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700 dark:text-gray-300">
+                          Quantity
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="Enter quantity"
+                            {...field}
+                            className="border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-red-500" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="mt-2">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Order Summary
+                    </p>
+                    <div className="flex justify-between text-sm my-1">
+                      <span className="text-gray-500">Total Cost</span>
+                      <span>
+                        $
+                        {(
+                          form.watch("quantity") * holding.current_price
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className={`mt-4 w-full ${
+                      tradeType === "buy"
+                        ? "bg-indigo-600 hover:bg-indigo-700"
+                        : "bg-red-600 hover:bg-red-700"
+                    } text-white py-2 rounded-md transition-colors`}
+                  >
+                    Place{" "}
+                    {tradeType.charAt(0).toUpperCase() + tradeType.slice(1)}{" "}
+                    Order
+                  </Button>
+                </form>
+              </Form>
+            </>
+          )}
         </div>
       </div>
     </div>

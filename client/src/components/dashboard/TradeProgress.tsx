@@ -25,5 +25,5 @@ export default function TradeProgress({
   const { status, message } = useWebSocket(websocketWithToken);
   console.log("Trade Progress WebSocket Status:", status);
   console.log("Trade Progress WebSocket Message:", message);
-  return null;
+  return <p>This is the trade progress component</p>;
 }

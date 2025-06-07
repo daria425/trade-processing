@@ -9,6 +9,7 @@ import HoldingsTable from "./HoldingsTable";
 import TradeForm from "./TradeForm";
 import TradeProgress from "./TradeProgress";
 import axios from "axios";
+import { set } from "react-hook-form";
 export default function Dashboard() {
   const { userData, getIdToken } = useOutletContext<AuthContextType>();
   const messagingEnabled = userData?.trader.is_messaging_enabled || false;
@@ -24,6 +25,7 @@ export default function Dashboard() {
     error: null,
   });
   const [tradeFormData, setTradeFormData] = useState<{
+    tradeStatus: "pending" | "completed" | "failed" | null;
     tradeType: "buy" | "sell";
     cashBalance: number;
     holding: {
@@ -41,6 +43,7 @@ export default function Dashboard() {
     holding: Holding
   ) => {
     setTradeFormData({
+      tradeStatus: null,
       tradeType,
       cashBalance,
       holding: {
@@ -168,9 +171,14 @@ export default function Dashboard() {
 
       if (response.status === 200) {
         console.log(`${tradeType} trade successful`, response.data);
-        handleCloseTradeForm();
+        if (tradeFormData) {
+          setTradeFormData({ ...tradeFormData, tradeStatus: "pending" });
+        }
       } else {
         console.error(`${tradeType} trade failed`, response.data);
+        if (tradeFormData) {
+          setTradeFormData({ ...tradeFormData, tradeStatus: "failed" });
+        }
       }
     } catch (error) {
       console.error(`Error during ${tradeType} trade:`, error);
@@ -195,7 +203,7 @@ export default function Dashboard() {
             </button>
           )}
           <DataStream getIdToken={getIdToken} />
-          <TradeProgress getIdToken={getIdToken} />
+
           <HoldingsTable
             cashBalance={userData?.trader.cash_balance || 0}
             holdings={userData?.holdings || []}
@@ -208,6 +216,8 @@ export default function Dashboard() {
               holding={tradeFormData.holding}
               handleCloseTradeForm={handleCloseTradeForm}
               handleSubmitTrade={handleSubmitTrade}
+              getIdToken={getIdToken}
+              tradeStatus={tradeFormData.tradeStatus}
             />
           )}
         </div>

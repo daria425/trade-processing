@@ -3,8 +3,6 @@ import asyncio
 from asyncio import Task
 from app.core.notifications import NotificationService
 from app.core.websocket_manager import WebsocketManager
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.notification_store import create_notification
 from app.db.trader_store import get_trader_by_id
 import time
 from app.utils.logger import logger 
@@ -89,7 +87,7 @@ class TradeSystem:
     async def add_trade_order(self, trade_order: StockTrade):
         await self.trade_orders.put(trade_order)
 
-    async def process_trade(self, processor_id, ws_manager, notification_service):
+    async def process_trade(self, processor_id, ws_manager: WebsocketManager, notification_service: NotificationService):
         async with self.sessionmaker() as session:
             while not self.shutdown_flag:
                 try:
@@ -114,7 +112,7 @@ class TradeSystem:
                         await ws_manager.broadcast(message)
                     trade.complete()
                     trader=await get_trader_by_id(trade.trader_id, session)
-                    message=await notification_service.send_notification(trader, ws_manager, session)
+                    message=await notification_service.send_notification(trader,  trade, ws_manager, session)
                     self.trade_orders.task_done()
                 except asyncio.TimeoutError:
                     continue
