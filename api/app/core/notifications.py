@@ -6,6 +6,7 @@ class NotificationService:
         pass
     
     async def send_notification(self, trader, ws_manager, session):
+        trader_id=trader.id if trader else None
         notification=Notification(trader_id=trader_id, message="Trade completed!", read=False,created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc))
         session.add(notification)
@@ -16,7 +17,6 @@ class NotificationService:
 "created_at": notification.created_at.isoformat()
     }
         if trader:
-            trader_id=trader.id
             if trader.status=="online":
                 await ws_manager.notify(trader_id, message)
             else:

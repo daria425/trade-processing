@@ -141,6 +141,7 @@ export default function Dashboard() {
 
     const { tradeType } = tradeFormData!;
     const idToken = await getIdToken();
+    console.log(tradeData.price);
 
     try {
       const response = await apiConfig.post(
@@ -148,7 +149,7 @@ export default function Dashboard() {
         {
           ticker: tradeData.symbol,
           quantity: tradeData.quantity,
-          price: tradeData.price,
+          price: parseFloat(tradeData.price.toFixed(2)),
           trade_type: tradeType,
         },
         /*

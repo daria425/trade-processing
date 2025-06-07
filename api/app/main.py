@@ -200,7 +200,10 @@ async def make_trade_order(
     bg_tasks: BackgroundTasks,
     notification_service=Depends(NotificationService),
 ):
+    print(trade_request)
+    [print(type(t) for t in trade_request.dict().values())]
     try:
+
         trader_id = request.state.user["uid"]
         ticker = trade_request.ticker
         quantity = trade_request.quantity
@@ -214,6 +217,7 @@ async def make_trade_order(
             price=price,
             ws_manager=ws_manager_instance,
             notification_service=notification_service,
+            trade_type=trade_request.trade_type,
         )
         return {
             "status": "success",

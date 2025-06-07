@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.notification_store import create_notification
 from app.db.trader_store import get_trader_by_id
 import time
+from app.utils.logger import logger 
 import random
 import uuid
 
@@ -24,7 +25,7 @@ class StockTrade:
         trader_id: str,
         stock: Stock,
         quantity: int,
-        type: Literal["buy", "sell"] = "buy",
+        trade_type: Literal["buy", "sell"] = "buy",
         status: Literal["queued", "in_progress", "filled"] = "queued",
     ):
         """
@@ -39,7 +40,7 @@ class StockTrade:
         self.status = status
         self.quantity = quantity
         self.timestamp = None  # start time
-        self.type = type  # buy or sell
+        self.trade_type = trade_type  # buy or sell
         self.stock = stock
 
     def start(self):
@@ -73,8 +74,8 @@ class Trader:
         self.name = name  # add later
         self.notification_tokens: List[str] = []
 
-    def make_trade_order(self, stock: Stock, quantity: int) -> StockTrade:
-        return StockTrade(self.id, stock, quantity)
+    def make_trade_order(self, stock: Stock, quantity: int, trade_type: Literal["buy", "sell"]) -> StockTrade:
+        return StockTrade(trader_id=self.trader_id, stock=stock, quantity=quantity, trade_type=trade_type)
 
 
 class TradeSystem:
@@ -88,7 +89,7 @@ class TradeSystem:
     async def add_trade_order(self, trade_order: StockTrade):
         await self.trade_orders.put(trade_order)
 
-    async def process_trade(self, processor_id, ws_manager, trader_id, notification_service):
+    async def process_trade(self, processor_id, ws_manager, notification_service):
         async with self.sessionmaker() as session:
             while not self.shutdown_flag:
                 try:
@@ -104,7 +105,7 @@ class TradeSystem:
                         message = {
                             "event": "trade_progress",
                             "trade_id": trade.id,
-                            "trader_id": trader_id,
+                            "trader_id":trade.trader_id,
                             "ticker": trade.stock.ticker,
                             "quantity": trade.quantity,
                             "progress": round(progress, 2),
@@ -112,20 +113,20 @@ class TradeSystem:
                         }
                         await ws_manager.broadcast(message)
                     trade.complete()
-                    trader=await get_trader_by_id(trader_id, session)
+                    trader=await get_trader_by_id(trade.trader_id, session)
                     message=await notification_service.send_notification(trader, ws_manager, session)
                     self.trade_orders.task_done()
                 except asyncio.TimeoutError:
                     continue
                 except Exception as e:
-                    print(f"Error in processor {processor_id}: {e}")
+                    logger.error(f"Error processing trade: {str(e)}, ", exc_info=True)
                     if trade:
                         self.trade_orders.task_done()
 
-    async def start_processors(self, ws_manager, trader_id, notification_service):
+    async def start_processors(self, ws_manager, notification_service):
         for i in range(self.num_processors):
             trade_execution_task = asyncio.create_task(
-                self.process_trade(i, ws_manager, trader_id, notification_service)
+                self.process_trade(i, ws_manager, notification_service)
             )
             self.processors.append(trade_execution_task)
 
@@ -143,12 +144,12 @@ class TradeSystem:
             self.processors = []
         print("All trade processors shut down successfully")
 
-    async def run(self, trader_id: str, ticker: str, quantity: int, price: int, ws_manager: WebsocketManager, notification_service: NotificationService):
+    async def run(self, trader_id: str, ticker: str, quantity: int, price: int, trade_type: Literal["buy", "sell"],ws_manager: WebsocketManager, notification_service: NotificationService):
         try:
             trader = Trader(trader_id=trader_id)
             stock = Stock(ticker=ticker, price=price)
-            trade = trader.make_trade_order(stock, quantity)
-            await self.start_processors(ws_manager=ws_manager, trader_id=trader_id, notification_service=notification_service)
+            trade = trader.make_trade_order(stock, quantity, trade_type)
+            await self.start_processors(ws_manager=ws_manager, notification_service=notification_service)
             await self.add_trade_order(trade)
             await self.process_all_orders()
         except Exception as e:
