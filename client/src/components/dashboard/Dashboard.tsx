@@ -132,6 +132,49 @@ export default function Dashboard() {
     }
   };
 
+  const handleSubmitTrade = async (tradeData: {
+    quantity: number;
+    symbol: string;
+    price: number;
+  }) => {
+    if (!tradeData) return;
+
+    const { tradeType } = tradeFormData!;
+    const idToken = await getIdToken();
+
+    try {
+      const response = await apiConfig.post(
+        `/api/trades/send`,
+        {
+          ticker: tradeData.symbol,
+          quantity: tradeData.quantity,
+          price: tradeData.price,
+          trade_type: tradeType,
+        },
+        /*
+            ticker: str
+    quantity: int
+    price: int  # Price can be float or int
+    trade_type: Literal["buy", "sell"]  # "buy" or "sell"
+        */
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        console.log(`${tradeType} trade successful`, response.data);
+        handleCloseTradeForm();
+      } else {
+        console.error(`${tradeType} trade failed`, response.data);
+      }
+    } catch (error) {
+      console.error(`Error during ${tradeType} trade:`, error);
+    }
+  };
+
   return (
     <div className="text-white p-8">
       <div className="max-w-5xl mx-auto">
@@ -161,7 +204,7 @@ export default function Dashboard() {
               cashBalance={tradeFormData.cashBalance}
               holding={tradeFormData.holding}
               handleCloseTradeForm={handleCloseTradeForm}
-              getIdToken={getIdToken}
+              handleSubmitTrade={handleSubmitTrade}
             />
           )}
         </div>

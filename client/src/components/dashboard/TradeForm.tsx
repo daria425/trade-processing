@@ -17,7 +17,7 @@ export default function TradeForm({
   cashBalance,
   holding,
   handleCloseTradeForm,
-  getIdToken,
+  handleSubmitTrade,
 }: {
   tradeType: string;
   cashBalance: number;
@@ -28,7 +28,11 @@ export default function TradeForm({
     current_value: number;
   };
   handleCloseTradeForm: () => void;
-  getIdToken: () => Promise<string>;
+  handleSubmitTrade: (data: {
+    quantity: number;
+    symbol: string;
+    price: number;
+  }) => void;
 }) {
   const createBuyFormSchema = () => {
     return z
@@ -70,6 +74,12 @@ export default function TradeForm({
     console.log(
       `Submitting ${tradeType} trade for ${data.quantity} shares of ${holding.symbol} at $${holding.current_price} each.`
     );
+    handleSubmitTrade({
+      quantity: data.quantity,
+      symbol: holding.symbol,
+      price: holding.current_price,
+    });
+    handleCloseTradeForm();
   };
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
