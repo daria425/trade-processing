@@ -23,7 +23,7 @@ export default function TradeForm({
   getIdToken,
   tradeStatus,
 }: {
-  tradeStatus: "pending" | "completed" | "failed" | null;
+  tradeStatus: "queued" | "in_progress" | "completed" | "failed" | null;
   tradeType: string;
   cashBalance: number;
   holding: {
@@ -122,7 +122,7 @@ export default function TradeForm({
         </div>
 
         <div className="p-6 bg-gray-800">
-          {tradeStatus && tradeStatus === "pending" ? (
+          {tradeStatus && tradeStatus === "queued" ? (
             <TradeProgress getIdToken={getIdToken} />
           ) : (
             <>

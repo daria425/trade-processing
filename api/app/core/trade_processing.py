@@ -24,7 +24,7 @@ class StockTrade:
         stock: Stock,
         quantity: int,
         trade_type: Literal["buy", "sell"] = "buy",
-        status: Literal["queued", "in_progress", "filled"] = "queued",
+        status: Literal["queued", "in_progress", "completed", "failed"] = "queued",
     ):
         """
         Wrapper around a single stock trade
@@ -34,7 +34,7 @@ class StockTrade:
         """
         self.id = str(uuid.uuid4())
         self.trader_id = trader_id
-        self.latency = random.uniform(1.0, 3.0)  # Random latency between 1-3 seconds
+        self.latency = random.uniform(3.0, 6.0)  # Random latency between 3-6 seconds
         self.status = status
         self.quantity = quantity
         self.timestamp = None  # start time
@@ -52,7 +52,7 @@ class StockTrade:
         return progress
 
     def complete(self):
-        self.status = "filled"
+        self.status = "completed"
         self.timestamp = None
         print("Trade filled")
 

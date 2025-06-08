@@ -9,7 +9,7 @@ import HoldingsTable from "./HoldingsTable";
 import TradeForm from "./TradeForm";
 import TradeProgress from "./TradeProgress";
 import axios from "axios";
-import { set } from "react-hook-form";
+
 export default function Dashboard() {
   const { userData, getIdToken } = useOutletContext<AuthContextType>();
   const messagingEnabled = userData?.trader.is_messaging_enabled || false;
@@ -25,7 +25,7 @@ export default function Dashboard() {
     error: null,
   });
   const [tradeFormData, setTradeFormData] = useState<{
-    tradeStatus: "pending" | "completed" | "failed" | null;
+    tradeStatus: "queued" | "in_progress" | "completed" | "failed" | null;
     tradeType: "buy" | "sell";
     cashBalance: number;
     holding: {
@@ -172,7 +172,7 @@ export default function Dashboard() {
       if (response.status === 200) {
         console.log(`${tradeType} trade successful`, response.data);
         if (tradeFormData) {
-          setTradeFormData({ ...tradeFormData, tradeStatus: "pending" });
+          setTradeFormData({ ...tradeFormData, tradeStatus: "queued" });
         }
       } else {
         console.error(`${tradeType} trade failed`, response.data);
