@@ -200,8 +200,6 @@ async def make_trade_order(
     bg_tasks: BackgroundTasks,
     notification_service=Depends(NotificationService),
 ):
-    print(trade_request)
-    [print(type(t) for t in trade_request.dict().values())]
     try:
 
         trader_id = request.state.user["uid"]

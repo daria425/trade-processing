@@ -3,7 +3,7 @@ import asyncio
 from asyncio import Task
 from app.core.notifications import NotificationService
 from app.core.websocket_manager import WebsocketManager
-from app.db.trader_store import get_trader_by_id
+from app.db.trader_store import get_trader_by_id, update_on_trade
 import time
 from app.utils.logger import logger 
 import random
@@ -111,7 +111,8 @@ class TradeSystem:
                         }
                         await ws_manager.broadcast(message)
                     trade.complete()
-                    trader=await get_trader_by_id(trade.trader_id, session)
+                    updated_trader_data=await update_on_trade(trader_id=trade.trader_id, trade_type=trade.trade_type, quantity=trade.quantity, symbol=trade.stock.ticker, price=trade.stock.price, session=session)
+                    trader=updated_trader_data["trader"]
                     message=await notification_service.send_notification(trader,  trade, ws_manager, session)
                     self.trade_orders.task_done()
                 except asyncio.TimeoutError:

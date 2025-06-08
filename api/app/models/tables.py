@@ -44,7 +44,9 @@ class Holding(Base):
     symbol = Column(String, nullable=False)
     quantity = Column(Float, nullable=False)
     trader= relationship("Trader", back_populates="holdings")
-    purchase_date = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=False, onupdate=func.now())
+    initial_purchase_date = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+
 
 class Trade(Base):
     __tablename__ = "trades"

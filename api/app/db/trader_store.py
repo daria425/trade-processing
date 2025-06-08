@@ -12,9 +12,10 @@ async def get_trader_by_id(trader_id: str, session: AsyncSession) -> Trader | No
     if not trader:
         raise ValueError(f"Trader with ID {trader_id} not found")
     return trader
-async def update_on_trade(trader:Trader, trade_type:Literal["buy", "sell"], quantity:int, price:int, symbol:str,session: AsyncSession):
+async def update_on_trade(trader_id:str, trade_type:Literal["buy", "sell"], quantity:int, price:int, symbol:str,session: AsyncSession):
     portfolio_value_change=quantity * price
     now=datetime.now(timezone.utc)
+    trader= await get_trader_by_id(trader_id, session)
     new_trade=Trade(
         trader_id=trader.id,
         symbol=symbol,
@@ -31,12 +32,15 @@ async def update_on_trade(trader:Trader, trade_type:Literal["buy", "sell"], quan
         existing_holding = existing_holding.scalar_one_or_none()
         if existing_holding:
             existing_holding.quantity += quantity
+            existing_holding.updated_at = now
+
         else:
             new_holding = Holding(
                 trader_id=trader.id,
                 symbol=symbol,
                 quantity=quantity,
-                purchase_date=now
+                updated_at=now,
+                initial_purchase_date=now
             )
             session.add(new_holding)
     elif trade_type=="sell":
@@ -65,7 +69,7 @@ async def update_on_trade(trader:Trader, trade_type:Literal["buy", "sell"], quan
                 "id": str(holding.id),
                 "symbol": holding.symbol,
                 "quantity": holding.quantity,
-                "purchase_date": holding.purchase_date.isoformat() if holding.purchase_date else None,
+                "purchase_date": holding.initial_purchase_date.isoformat() if holding.initial_purchase_date else None,
                 "current_price": price,
                 "current_value": current_value,
             }
