@@ -3,16 +3,7 @@ import { useState, useEffect, useRef } from "react";
 function useWebSocket(url: string | null) {
   const connection = useRef<WebSocket | null>(null);
   const [status, setStatus] = useState({ connected: false, error: false });
-  const [message, setMessage] = useState<{
-    trader_id: string;
-    trade_id: string;
-    ticker: string;
-    quantity: number;
-    message: string;
-    event: "trade_completed";
-    progress: number;
-    status: "success" | "failed";
-  } | null>(null);
+  const [message, setMessage] = useState<any>(null); // Use `any` for flexibility, can be replaced with a specific type later
   /*
   "trader_id": trader_id,
 "trade_id": trade.id,
@@ -23,7 +14,7 @@ function useWebSocket(url: string | null) {
 "progress": 100,
 "status":"success"
   */
-
+  console.log("Message", message);
   useEffect(() => {
     if (!url) {
       console.warn("WebSocket URL is null or undefined");

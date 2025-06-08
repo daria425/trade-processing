@@ -22,6 +22,7 @@ export default function TradeForm({
   handleSubmitTrade,
   getIdToken,
   tradeStatus,
+  onTradeComplete,
 }: {
   tradeStatus: "queued" | "in_progress" | "completed" | "failed" | null;
   tradeType: string;
@@ -39,6 +40,7 @@ export default function TradeForm({
     symbol: string;
     price: number;
   }) => void;
+  onTradeComplete?: () => void;
 }) {
   const [activeTrade, setActiveTrade] = useState<boolean>(false);
   const createBuyFormSchema = () => {
@@ -122,8 +124,11 @@ export default function TradeForm({
         </div>
 
         <div className="p-6 bg-gray-800">
-          {tradeStatus && tradeStatus === "queued" ? (
-            <TradeProgress getIdToken={getIdToken} />
+          {tradeStatus ? (
+            <TradeProgress
+              getIdToken={getIdToken}
+              onTradeComplete={onTradeComplete}
+            />
           ) : (
             <>
               <div className="flex justify-between mb-6 text-sm">

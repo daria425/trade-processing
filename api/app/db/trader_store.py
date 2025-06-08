@@ -132,7 +132,7 @@ async def login_trader(uid:str, session: AsyncSession) -> Trader:
                 "id": str(holding.id),  # Convert UUID to string
                 "symbol": holding.symbol,
                 "quantity": holding.quantity,
-                "purchase_date": holding.purchase_date.isoformat() if holding.purchase_date else None,
+                "purchase_date": holding.initial_purchase_date.isoformat() if holding.initial_purchase_date else None,
                 "current_price": current_price,
                 "current_value": holding.quantity * current_price,
             }

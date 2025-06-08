@@ -4,8 +4,10 @@ import { tradeProgressWebsocketUrl } from "../../config/api.config";
 
 export default function TradeProgress({
   getIdToken,
+  onTradeComplete,
 }: {
   getIdToken: () => Promise<string>;
+  onTradeComplete: () => void;
 }) {
   const [token, setToken] = useState<string | null>(null);
 
@@ -21,10 +23,20 @@ export default function TradeProgress({
   const websocketWithToken = token
     ? `${tradeProgressWebsocketUrl}?token=${token}`
     : null;
-
   const { status, message } = useWebSocket(websocketWithToken);
-  console.log("Trade Progress WebSocket Status:", status);
-  console.log("Trade Progress WebSocket Message:", message);
+  useEffect(() => {
+    if (
+      message &&
+      message.progress === 100 &&
+      message.event === "trade_completed"
+    ) {
+      const timer = setTimeout(() => {
+        onTradeComplete();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [message, onTradeComplete]);
+
   return (
     <div className="text-center p-6">
       <h2 className="text-xl font-semibold text-indigo-600 mb-4">

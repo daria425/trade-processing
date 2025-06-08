@@ -1,17 +1,18 @@
 import { useOutletContext } from "react-router";
 import type { AuthContextType, Holding } from "../../types/auth.types";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { getToken } from "firebase/messaging";
 import { apiConfig } from "@/config/api.config";
 import { messaging } from "../../config/firebase.config";
 import DataStream from "./DataStream";
 import HoldingsTable from "./HoldingsTable";
 import TradeForm from "./TradeForm";
-import TradeProgress from "./TradeProgress";
 import axios from "axios";
+import { set } from "react-hook-form";
 
 export default function Dashboard() {
   const { userData, getIdToken } = useOutletContext<AuthContextType>();
+  const [traderData, setTraderData] = useState(userData);
   const messagingEnabled = userData?.trader.is_messaging_enabled || false;
   const [fcmToken, setFcmToken] = useState<string | null>(null);
 
@@ -35,8 +36,31 @@ export default function Dashboard() {
       current_value: number;
     };
   } | null>(null);
-  console.log("User Data:", userData);
 
+  const refreshUserData = useCallback(async () => {
+    try {
+      const idToken = await getIdToken();
+      const response = await apiConfig.post(
+        "/api/trader/login",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+      if (response.status === 200) {
+        console.log("User data refreshed successfully");
+        setTraderData(response.data);
+      } else {
+        console.error("Failed to refresh user data");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+      return null;
+    }
+  }, [getIdToken]);
   const handleOpenTradeForm = (
     tradeType: "buy" | "sell",
     cashBalance: number,
@@ -191,7 +215,7 @@ export default function Dashboard() {
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent">
-            Welcome, {userData?.trader.name || "Trader"}!
+            Welcome, {traderData?.trader.name || "Trader"}!
           </h1>
           {!messagingEnabled && (
             <button
@@ -205,8 +229,8 @@ export default function Dashboard() {
           <DataStream getIdToken={getIdToken} />
 
           <HoldingsTable
-            cashBalance={userData?.trader.cash_balance || 0}
-            holdings={userData?.holdings || []}
+            cashBalance={traderData?.trader.cash_balance || 0}
+            holdings={traderData?.holdings || []}
             handleOpenTradeForm={handleOpenTradeForm}
           />
           {tradeFormData && (
@@ -218,6 +242,7 @@ export default function Dashboard() {
               handleSubmitTrade={handleSubmitTrade}
               getIdToken={getIdToken}
               tradeStatus={tradeFormData.tradeStatus}
+              onTradeComplete={refreshUserData}
             />
           )}
         </div>
