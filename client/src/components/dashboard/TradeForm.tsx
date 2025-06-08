@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react";
 import TradeProgress from "./TradeProgress";
 
 export default function TradeForm({
@@ -40,9 +39,8 @@ export default function TradeForm({
     symbol: string;
     price: number;
   }) => void;
-  onTradeComplete?: () => void;
+  onTradeComplete: () => void;
 }) {
-  const [activeTrade, setActiveTrade] = useState<boolean>(false);
   const createBuyFormSchema = () => {
     return z
       .object({
@@ -89,7 +87,6 @@ export default function TradeForm({
       symbol: holding.symbol,
       price: holding.current_price,
     });
-    setActiveTrade(true);
   };
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">

@@ -7,8 +7,8 @@ import { messaging } from "../../config/firebase.config";
 import DataStream from "./DataStream";
 import HoldingsTable from "./HoldingsTable";
 import TradeForm from "./TradeForm";
+import Sidebar from "./Sidebar";
 import axios from "axios";
-import { set } from "react-hook-form";
 
 export default function Dashboard() {
   const { userData, getIdToken } = useOutletContext<AuthContextType>();
@@ -210,8 +210,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="text-white p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="text-white p-8 flex">
+      <Sidebar portfolioValue={traderData?.portfolio_value || 0} />
+      <div className="flex-1 max-w-5xl mx-auto transition-all duration-200">
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent">
