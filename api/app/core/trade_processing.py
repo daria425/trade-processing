@@ -32,6 +32,9 @@ class StockTrade:
             :param quantity: Trade quantity (number of shares)
             :param status: Execution status
         """
+        if quantity <= 0:
+            raise ValueError("Trade quantity must be positive")
+            
         self.id = str(uuid.uuid4())
         self.trader_id = trader_id
         self.latency = random.uniform(3.0, 6.0)  # Random latency between 3-6 seconds
@@ -47,7 +50,9 @@ class StockTrade:
         self.status = "in_progress"
 
     def get_progress(self):
-        elapsed_time = time.time() - self.timestamp
+        if self.timestamp is None:
+            return 0.0
+        elapsed_time = time.time() - self.timestamp 
         progress = min(elapsed_time / self.latency, 1.0)
         return progress
 
