@@ -210,43 +210,40 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="text-white p-8 flex">
-      <Sidebar portfolioValue={traderData?.portfolio_value || 0} />
-      <div className="flex-1 max-w-5xl mx-auto transition-all duration-200">
-        {/* Welcome Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent">
-            Welcome, {traderData?.trader.name || "Trader"}!
-          </h1>
-          {!messagingEnabled && (
-            <button
-              onClick={handleEnableNotifications}
-              type="button"
-              className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
-            >
-              Enable Messaging
-            </button>
-          )}
-          <DataStream getIdToken={getIdToken} />
+    <div className="mx-auto transition-all duration-200 p-8 text-white">
+      {/* Welcome Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent">
+          Welcome, {traderData?.trader.name || "Trader"}!
+        </h1>
+        {!messagingEnabled && (
+          <button
+            onClick={handleEnableNotifications}
+            type="button"
+            className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
+          >
+            Enable Messaging
+          </button>
+        )}
+        <DataStream getIdToken={getIdToken} />
 
-          <HoldingsTable
-            cashBalance={traderData?.trader.cash_balance || 0}
-            holdings={traderData?.holdings || []}
-            handleOpenTradeForm={handleOpenTradeForm}
+        <HoldingsTable
+          cashBalance={traderData?.trader.cash_balance || 0}
+          holdings={traderData?.holdings || []}
+          handleOpenTradeForm={handleOpenTradeForm}
+        />
+        {tradeFormData && (
+          <TradeForm
+            tradeType={tradeFormData.tradeType}
+            cashBalance={tradeFormData.cashBalance}
+            holding={tradeFormData.holding}
+            handleCloseTradeForm={handleCloseTradeForm}
+            handleSubmitTrade={handleSubmitTrade}
+            getIdToken={getIdToken}
+            tradeStatus={tradeFormData.tradeStatus}
+            onTradeComplete={refreshUserData}
           />
-          {tradeFormData && (
-            <TradeForm
-              tradeType={tradeFormData.tradeType}
-              cashBalance={tradeFormData.cashBalance}
-              holding={tradeFormData.holding}
-              handleCloseTradeForm={handleCloseTradeForm}
-              handleSubmitTrade={handleSubmitTrade}
-              getIdToken={getIdToken}
-              tradeStatus={tradeFormData.tradeStatus}
-              onTradeComplete={refreshUserData}
-            />
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
