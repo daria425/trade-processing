@@ -10,7 +10,13 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useState } from "react";
 import TradeProgress from "./TradeProgress";
+import { apiConfig } from "../../config/api.config";
+import type {
+  StockSearchResults,
+  StockSearchResult,
+} from "../../types/forms.types";
 
 export default function BuyForm({
   cashBalance,
@@ -24,25 +30,31 @@ export default function BuyForm({
   onTradeComplete: () => void;
   getIdToken: () => Promise<string>;
 }) {
-  const buyFormSchema = z.object({
-    quantity: z.coerce
-      .number()
-      .positive()
-      .refine(
-        (val) => val * (selectedHolding?.current_price || 0) <= cashBalance,
-        {
-          message: "Insufficient funds for this purchase",
-        }
-      ),
+  const searchFormSchema = z.object({
     symbol: z.string().min(1, "Symbol is required"),
   });
-  const form = useForm<z.infer<typeof buyFormSchema>>({
-    resolver: zodResolver(buyFormSchema),
+  const searchForm = useForm<z.infer<typeof searchFormSchema>>({
+    resolver: zodResolver(searchFormSchema),
     defaultValues: {
-      quantity: 1,
       symbol: "",
     },
   });
+  const [searchResults, setSearchResults] = useState<StockSearchResults>([]);
+
+  const onSubmit = async (data: z.infer<typeof searchFormSchema>) => {
+    const response = await apiConfig.get(
+      `/api/stock/lookup/?symbol=${data.symbol}`
+    );
+    if (response.status === 200) {
+      const yfSearchResultResponse = response.data;
+
+      console.log("search results:", yfSearchResultResponse);
+      const searchData = yfSearchResultResponse.stock_data;
+      setSearchResults(searchData);
+    } else {
+      console.error("Failed to fetch search results");
+    }
+  };
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md mx-4 z-10 overflow-hidden">
@@ -73,30 +85,63 @@ export default function BuyForm({
               onTradeComplete={onTradeComplete}
             />
           ) : (
-            <Form {...form}>
-              <form onSubmit={() => {}} className="flex flex-col gap-4">
-                <FormField
-                  control={form.control}
-                  name="symbol"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700 dark:text-gray-300">
-                        Search Stock Symbol
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="Enter stock symbol"
-                          {...field}
-                          className="border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-500" />
-                    </FormItem>
-                  )}
-                />
-              </form>
-            </Form>
+            <>
+              <Form {...searchForm}>
+                <form
+                  onSubmit={searchForm.handleSubmit(onSubmit)}
+                  className="flex flex-col gap-4"
+                >
+                  <FormField
+                    control={searchForm.control}
+                    name="symbol"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700 dark:text-gray-300">
+                          Search Stock Symbol
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            placeholder="Enter stock symbol"
+                            {...field}
+                            className="border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-red-500" />
+                      </FormItem>
+                    )}
+                  />
+                </form>
+              </Form>
+              {searchResults.length > 0 && (
+                <div className="mt-6 bg-gray-900 rounded-md border border-gray-700">
+                  <h3 className="text-lg font-medium text-white px-4 py-2 border-b border-gray-700">
+                    Search Results
+                  </h3>
+                  <div className="divide-y divide-gray-700">
+                    {searchResults.map((stock: StockSearchResult) => (
+                      <div
+                        key={stock.symbol}
+                        className="p-4 hover:bg-gray-800 cursor-pointer flex justify-between items-center"
+                        onClick={() => {
+                          // Handle stock selection here
+                          console.log("Selected stock:", stock);
+                        }}
+                      >
+                        <div>
+                          <div className="font-medium text-white">
+                            {stock.symbol}
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            {stock.name}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -58,6 +58,7 @@ export default function Dashboard() {
       return null;
     }
   }, [getIdToken]);
+
   const handleOpenTradeForm = (
     tradeType: "buy" | "sell",
     cashBalance: number,

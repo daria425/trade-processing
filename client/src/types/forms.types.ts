@@ -9,3 +9,9 @@ export interface FormDataType {
     current_value: number;
   } | null;
 }
+
+export type StockSearchResult = {
+  symbol: string;
+  name: string;
+};
+export type StockSearchResults = StockSearchResult[];
