@@ -1,5 +1,6 @@
 import { useOutletContext } from "react-router";
 import type { AuthContextType, Holding } from "../../types/auth.types";
+import type { FormDataType } from "../../types/forms.types";
 import { useState, useCallback } from "react";
 import { getToken } from "firebase/messaging";
 import { apiConfig } from "@/config/api.config";
@@ -7,11 +8,12 @@ import { messaging } from "../../config/firebase.config";
 import DataStream from "./DataStream";
 import HoldingsTable from "./HoldingsTable";
 import TradeForm from "./TradeForm";
-import Sidebar from "./Sidebar";
+import BuyForm from "./BuyForm";
 import axios from "axios";
 
 export default function Dashboard() {
-  const { userData, getIdToken } = useOutletContext<AuthContextType>();
+  const { userData, getIdToken, isBuying } =
+    useOutletContext<AuthContextType>();
   const [traderData, setTraderData] = useState(userData);
   const messagingEnabled = userData?.trader.is_messaging_enabled || false;
   const [fcmToken, setFcmToken] = useState<string | null>(null);
@@ -25,18 +27,13 @@ export default function Dashboard() {
     success: false,
     error: null,
   });
-  const [tradeFormData, setTradeFormData] = useState<{
-    tradeStatus: "queued" | "in_progress" | "completed" | "failed" | null;
-    tradeType: "buy" | "sell";
-    cashBalance: number;
-    holding: {
-      symbol: string;
-      quantity: number;
-      current_price: number;
-      current_value: number;
-    };
-  } | null>(null);
-
+  const [tradeFormData, setTradeFormData] = useState<FormDataType | null>(null);
+  const [buyStocksFormData, setBuyStocksFormData] = useState<FormDataType>({
+    tradeStatus: null,
+    tradeType: "buy",
+    cashBalance: traderData?.trader.cash_balance || 0,
+    holding: null,
+  });
   const refreshUserData = useCallback(async () => {
     try {
       const idToken = await getIdToken();
@@ -232,7 +229,7 @@ export default function Dashboard() {
           holdings={traderData?.holdings || []}
           handleOpenTradeForm={handleOpenTradeForm}
         />
-        {tradeFormData && (
+        {tradeFormData && tradeFormData?.holding && (
           <TradeForm
             tradeType={tradeFormData.tradeType}
             cashBalance={tradeFormData.cashBalance}
@@ -242,6 +239,14 @@ export default function Dashboard() {
             getIdToken={getIdToken}
             tradeStatus={tradeFormData.tradeStatus}
             onTradeComplete={refreshUserData}
+          />
+        )}
+        {isBuying && (
+          <BuyForm
+            getIdToken={getIdToken}
+            onTradeComplete={refreshUserData}
+            cashBalance={traderData?.trader.cash_balance || 0}
+            tradeStatus={buyStocksFormData.tradeStatus}
           />
         )}
       </div>

@@ -25,10 +25,15 @@ export default function ProtectedRoute() {
   }, [nav, userData, error, isLoading]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isBuying, setIsBuying] = useState(false);
-
   const isMobile = useMediaQuery("(max-width: 768px)");
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+  };
+  const handleOpenBuyForm = () => {
+    setIsBuying(true);
+  };
+  const handleCloseBuyForm = () => {
+    setIsBuying(false);
   };
   return (
     <div
@@ -62,8 +67,17 @@ export default function ProtectedRoute() {
           <Sidebar
             portfolioValue={userData?.portfolio_value || 0}
             isOpen={isSidebarOpen}
+            handleOpenBuyForm={handleOpenBuyForm}
           />
-          <Outlet context={{ userData, getIdToken, isBuying }} />
+          <Outlet
+            context={{
+              userData,
+              getIdToken,
+              isBuying,
+              handleCloseBuyForm,
+              handleOpenBuyForm,
+            }}
+          />
         </>
       )}
     </div>

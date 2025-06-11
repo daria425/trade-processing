@@ -1,3 +1,4 @@
+import type { FormDataType } from "./forms.types";
 interface Trader {
   id: string;
   trader_id: string; // Firebase UID
@@ -72,4 +73,8 @@ export interface AuthContextType {
   signup: (email: string, username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   getIdToken: () => Promise<string>;
+  isBuying: boolean;
+  handleOpenBuyForm: () => void;
+  handleCloseBuyForm: () => void;
+  buyFormState: FormDataType | null;
 }

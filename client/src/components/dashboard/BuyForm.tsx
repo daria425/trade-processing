@@ -11,26 +11,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import TradeProgress from "./TradeProgress";
-import { useState } from "react";
-interface BuyFormProps {
-  cashBalance: number;
-  tradeStatus: "queued" | "in_progress" | "completed" | "failed" | null;
-  onTradeComplete: () => void;
-  getIdToken: () => Promise<string>;
-}
 
 export default function BuyForm({
   cashBalance,
   tradeStatus,
   onTradeComplete,
   getIdToken,
-}: BuyFormProps) {
-  const [selectedHolding, setSelectedHolding] = useState<{
-    symbol: string;
-    quantity: number;
-    current_price: number;
-    current_value: number;
-  } | null>(null);
+  selectedHolding,
+}: {
+  cashBalance: number;
+  tradeStatus: "queued" | "in_progress" | "completed" | "failed" | null;
+  onTradeComplete: () => void;
+  getIdToken: () => Promise<string>;
+}) {
   const buyFormSchema = z.object({
     quantity: z.coerce
       .number()
@@ -47,7 +40,7 @@ export default function BuyForm({
     resolver: zodResolver(buyFormSchema),
     defaultValues: {
       quantity: 1,
-      symbol: selectedHolding?.symbol || "",
+      symbol: "",
     },
   });
   return (
@@ -92,7 +85,7 @@ export default function BuyForm({
                       </FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
+                          type="text"
                           placeholder="Enter stock symbol"
                           {...field}
                           className="border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"

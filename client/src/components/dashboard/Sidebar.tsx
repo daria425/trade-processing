@@ -1,9 +1,11 @@
 export default function Sidebar({
   portfolioValue,
   isOpen,
+  handleOpenBuyForm,
 }: {
   portfolioValue: number;
   isOpen: boolean;
+  handleOpenBuyForm: () => void;
 }) {
   return (
     <>
@@ -29,6 +31,7 @@ export default function Sidebar({
         <div>
           <div className="px-4 py-2 text-gray-400">
             <button
+              onClick={handleOpenBuyForm}
               type="button"
               className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
             >
