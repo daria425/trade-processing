@@ -10,6 +10,7 @@ import HoldingsTable from "./HoldingsTable";
 import TradeForm from "./TradeForm";
 import BuyForm from "./BuyForm";
 import axios from "axios";
+import { symbol } from "zod";
 
 export default function Dashboard() {
   const { userData, getIdToken, isBuying } =
@@ -178,12 +179,7 @@ export default function Dashboard() {
           price: parseFloat(tradeData.price.toFixed(2)),
           trade_type: tradeType,
         },
-        /*
-            ticker: str
-    quantity: int
-    price: int  # Price can be float or int
-    trade_type: Literal["buy", "sell"]  # "buy" or "sell"
-        */
+
         {
           headers: {
             Authorization: `Bearer ${idToken}`,
@@ -204,6 +200,29 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error(`Error during ${tradeType} trade:`, error);
+    }
+  };
+
+  const handleGetPriceData = async (symbol: string) => {
+    try {
+      const response = await apiConfig.get(`api/stock/?symbol=${symbol}`);
+      if (response.status === 200) {
+        console.log("Price data fetched successfully", response.data);
+        const holdingData = response.data.stock_data;
+        setBuyStocksFormData({
+          ...buyStocksFormData,
+          holding: {
+            symbol: holdingData.symbol,
+            quantity: 1, // Default to 1 for buy form
+            current_price: holdingData.current_price,
+            current_value: holdingData.currentPrice *1,
+          },
+        });
+      } else {
+        console.error("Failed to fetch price data");
+      }
+    } catch (error) {
+      console.error("Error fetching price data:", error);
     }
   };
 
@@ -230,7 +249,7 @@ export default function Dashboard() {
           holdings={traderData?.holdings || []}
           handleOpenTradeForm={handleOpenTradeForm}
         />
-        {tradeFormData && tradeFormData?.holding && (
+        {tradeFormData && tradeFormData?.holding && && (
           <TradeForm
             tradeType={tradeFormData.tradeType}
             cashBalance={tradeFormData.cashBalance}
@@ -248,6 +267,7 @@ export default function Dashboard() {
             onTradeComplete={refreshUserData}
             cashBalance={traderData?.trader.cash_balance || 0}
             tradeStatus={buyStocksFormData.tradeStatus}
+            handleGetPriceData={handleGetPriceData}
           />
         )}
       </div>

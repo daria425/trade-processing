@@ -23,7 +23,7 @@ from app.core.websocket_manager import WebsocketManager
 from app.models.tables import Trader, Notification
 from app.config.firebase_config import FirebaseConfig
 from app.utils.logger import logger
-from app.core.stock_search import lookup_stock
+from app.core.stock_search import lookup_stock, get_price_data
 from app.db.database_connection import (
     engine,
     Base,
@@ -70,7 +70,7 @@ app = FastAPI(lifespan=lifespan)
 @app.middleware("http")
 async def authenticate(request: Request, call_next):
     public_paths = ["/"]
-    public_prefixes = ["/api/stock/lookup/"]
+    public_prefixes = ["/api/stock/lookup/", "/api/stock/"]
 
     # Check if the current path should skip authentication
     path = request.url.path
@@ -110,7 +110,7 @@ def main():
 ws_manager_instance = WebsocketManager()
 market_data_ws_manager = WebsocketManager()
 
-@app.get("/api/stock/lookup/")
+@app.get("/api/stocks/lookup/")
 def lookup_stock_endpoint(
     symbol: str = Query(..., description="Stock symbol to lookup"),
     result_length: int = Query(5, description="Number of results to return"),
@@ -120,12 +120,28 @@ def lookup_stock_endpoint(
         stock_data = lookup_stock(symbol, result_length)
         return JSONResponse(
             status_code=200,
-            content={"message": "Stock data retrieved successfully", "stock_data": stock_data},
+            content={"message": "Search results retrieved successfully", "search_results": stock_data},
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error during stock lookup: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stock/")
+def get_stock_data_endpoint(
+    symbol: str = Query(..., description="Stock ticker symbol"),
+):
+    try:
+        stock_data = get_price_data(symbol)
+        if not stock_data:
+            raise HTTPException(status_code=404, detail="Stock not found")
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Stock data retrieved successfully", "stock_data": stock_data},
+        )
+    except Exception as e:
+        logger.error(f"Error during stock data retrieval: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/trader/signup")

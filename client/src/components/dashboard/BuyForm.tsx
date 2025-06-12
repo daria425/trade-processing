@@ -18,17 +18,40 @@ import type {
   StockSearchResult,
 } from "../../types/forms.types";
 
+function StockSearchForm({
+  onSelectStock,
+}: {
+  onSelectStock: (symbol: string) => void;
+}) {
+  const searchFormSchema = z.object({
+    symbol: z.string().min(1, "Symbol is required"),
+  });
+  const searchForm = useForm<z.infer<typeof searchFormSchema>>({
+    resolver: zodResolver(searchFormSchema),
+    defaultValues: {
+      symbol: "",
+    },
+  });
+}
 export default function BuyForm({
   cashBalance,
   tradeStatus,
   onTradeComplete,
   getIdToken,
+  handleGetPriceData,
   selectedHolding,
 }: {
   cashBalance: number;
   tradeStatus: "queued" | "in_progress" | "completed" | "failed" | null;
   onTradeComplete: () => void;
   getIdToken: () => Promise<string>;
+  handleGetPriceData: (symbol: string) => Promise<void>;
+  selectedHolding: {
+    symbol: string;
+    quantity: number;
+    current_price: number;
+    current_value: number;
+  } | null;
 }) {
   const searchFormSchema = z.object({
     symbol: z.string().min(1, "Symbol is required"),
@@ -49,7 +72,7 @@ export default function BuyForm({
       const yfSearchResultResponse = response.data;
 
       console.log("search results:", yfSearchResultResponse);
-      const searchData = yfSearchResultResponse.stock_data;
+      const searchData = yfSearchResultResponse.search_results;
       setSearchResults(searchData);
     } else {
       console.error("Failed to fetch search results");
@@ -115,17 +138,14 @@ export default function BuyForm({
               </Form>
               {searchResults.length > 0 && (
                 <div className="mt-6 bg-gray-900 rounded-md border border-gray-700">
-                  <h3 className="text-lg font-medium text-white px-4 py-2 border-b border-gray-700">
-                    Search Results
-                  </h3>
                   <div className="divide-y divide-gray-700">
                     {searchResults.map((stock: StockSearchResult) => (
                       <div
                         key={stock.symbol}
                         className="p-4 hover:bg-gray-800 cursor-pointer flex justify-between items-center"
                         onClick={() => {
-                          // Handle stock selection here
-                          console.log("Selected stock:", stock);
+                          handleGetPriceData(stock.symbol);
+                          // Optionally, you can close the form or perform other actions
                         }}
                       >
                         <div>
